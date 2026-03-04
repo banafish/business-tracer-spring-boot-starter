@@ -480,8 +480,22 @@
             border: 2px solid var(--gray-300);
             border-radius: 10px;
             min-width: 180px;
+            width: auto !important;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
             transition: all 0.2s;
+        }
+
+        .drawflow .drawflow-node .drawflow_content_node {
+            padding: 0;
+            resize: both;
+            overflow: auto;
+            min-width: 180px;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+            box-sizing: border-box;
         }
 
         .drawflow .drawflow-node.executed {
@@ -497,15 +511,59 @@
 
         .drawflow .drawflow-node .inputs,
         .drawflow .drawflow-node .outputs {
-            position: relative;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: block;
         }
 
         .drawflow .drawflow-node .input,
         .drawflow .drawflow-node .output {
-            width: 12px;
-            height: 12px;
+            position: absolute;
+            width: 14px;
+            height: 14px;
             background: var(--primary);
             border: 2px solid white;
+            border-radius: 50%;
+            pointer-events: all;
+            z-index: 10;
+        }
+
+        /* Top port */
+        .drawflow .drawflow-node .input_1,
+        .drawflow .drawflow-node .output_1 {
+            top: -7px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        /* Right port */
+        .drawflow .drawflow-node .input_2,
+        .drawflow .drawflow-node .output_2 {
+            top: 50%;
+            right: -7px;
+            left: auto;
+            transform: translateY(-50%);
+        }
+
+        /* Bottom port */
+        .drawflow .drawflow-node .input_3,
+        .drawflow .drawflow-node .output_3 {
+            bottom: -7px;
+            left: 50%;
+            top: auto;
+            transform: translateX(-50%);
+        }
+
+        /* Left port */
+        .drawflow .drawflow-node .input_4,
+        .drawflow .drawflow-node .output_4 {
+            top: 50%;
+            left: -7px;
+            transform: translateY(-50%);
         }
 
         .drawflow .connection .main-path {
@@ -516,6 +574,12 @@
         .drawflow-node .node-content {
             padding: 12px;
             cursor: pointer;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+            width: 100%;
+            height: 100%;
         }
 
         .drawflow-node .node-content:hover {
@@ -531,12 +595,18 @@
             font-weight: 600;
             display: inline-block;
             margin-bottom: 5px;
+            align-self: flex-start;
+            flex-shrink: 0;
         }
 
         .drawflow-node .node-content .node-name {
             font-weight: 600;
             font-size: 0.85em;
             color: var(--gray-900);
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            word-break: break-all;
         }
 
         .drawflow-node .node-content .flow-node-meta {
@@ -545,11 +615,13 @@
             gap: 6px;
             margin-top: 6px;
             flex-wrap: wrap;
+            flex-shrink: 0;
         }
 
         .drawflow-node .node-content .node-status {
             font-size: 0.7em;
             margin-top: 4px;
+            flex-shrink: 0;
         }
 
         .drawflow-node .node-content .node-status.executed {
@@ -957,53 +1029,91 @@
             flowEditor.editor_mode = 'view';
             flowEditor.start();
 
+            // Setup ResizeObserver (for view mode, user can also resize the canvas!)
+            let resizeObserver = new ResizeObserver((entries) => {
+                for (let entry of entries) {
+                    const el = entry.target;
+                    const nodeId = el.id.substring(5); // 'node-X'
+                    if (flowEditor.getNodeFromId(nodeId)) {
+                        flowEditor.updateConnectionNodes('node-' + nodeId);
+                    }
+                }
+            });
+
+            flowEditor.on('nodeCreated', function (id) {
+                const nodeEl = document.getElementById('node-' + id);
+                if (nodeEl) {
+                    resizeObserver.observe(nodeEl);
+                }
+            });
+
+            // Prevent node dragging when resizing
+            container.addEventListener('mousedown', function (e) {
+                const nodeContent = e.target.closest('.drawflow_content_node');
+                if (nodeContent) {
+                    const rect = nodeContent.getBoundingClientRect();
+                    // Native resize handler is at the bottom right corner
+                    if (e.clientX > rect.right - 20 && e.clientY > rect.bottom - 20) {
+                        e.stopPropagation();
+                    }
+                }
+            }, { capture: true });
+
             try {
                 flowEditor.import(drawflowData);
                 const executedCodes = new Set();
                 const nodeStatusMap = new Map();
                 if (nodeData) collectExecutedCodes(nodeData, executedCodes, nodeStatusMap);
 
-                setTimeout(() => {
-                    // Ensure checkboxes match data state for end nodes
-                    const uiNodes = document.querySelectorAll('.drawflow-node');
-                    uiNodes.forEach(nodeel => {
-                        const nodeId = nodeel.id.split('-')[1];
-                        const nData = flowEditor.getNodeFromId(nodeId);
-                        if (nData && nData.data && (nData.data.isEndNode === true || nData.data.isEndNode === 'true')) {
+                // Ensure checkboxes match data state and apply dimensions synchronously
+                const uiNodes = document.querySelectorAll('.drawflow-node');
+                uiNodes.forEach(nodeel => {
+                    if (resizeObserver) resizeObserver.observe(nodeel);
+                    const nodeId = nodeel.id.split('-')[1];
+                    const nData = flowEditor.getNodeFromId(nodeId);
+
+                    if (nData && nData.data) {
+                        if (nData.data.isEndNode === true || nData.data.isEndNode === 'true') {
                             const checkbox = nodeel.querySelector('input[type="checkbox"][df-isEndNode]');
                             if (checkbox) checkbox.checked = true;
                         }
 
-                        // Disable checkbox in view mode
-                        const allCheckboxes = nodeel.querySelectorAll('input[type="checkbox"]');
-                        allCheckboxes.forEach(cb => cb.disabled = true);
-
-                        // Inject meta area for duration/status
-                        const contentEl = nodeel.querySelector('.node-content');
-                        if (contentEl) {
-                            // Hide the checkbox area in view mode
-                            const checkboxArea = contentEl.querySelector('div[style*="margin-top"]');
-                            if (checkboxArea && checkboxArea.querySelector('input[type="checkbox"]')) {
-                                checkboxArea.style.display = 'none';
-                            }
-                            // Inject .node-status if not present
-                            if (!contentEl.querySelector('.node-status')) {
-                                const statusDiv = document.createElement('div');
-                                statusDiv.className = 'node-status';
-                                contentEl.appendChild(statusDiv);
-                            }
-                            // Inject .flow-node-meta if not present
-                            if (!contentEl.querySelector('.flow-node-meta')) {
-                                const metaDiv = document.createElement('div');
-                                metaDiv.className = 'flow-node-meta';
-                                contentEl.appendChild(metaDiv);
-                            }
+                        const contentNode = nodeel.querySelector('.drawflow_content_node');
+                        if (contentNode) {
+                            if (nData.data.width) contentNode.style.width = nData.data.width;
+                            if (nData.data.height) contentNode.style.height = nData.data.height;
                         }
-                    });
+                    }
 
-                    applyNodeStatus(executedCodes, nodeStatusMap);
-                    setupNodeClickHandlers(nodeData);
-                }, 100);
+                    // Disable checkbox in view mode
+                    const allCheckboxes = nodeel.querySelectorAll('input[type="checkbox"]');
+                    allCheckboxes.forEach(cb => cb.disabled = true);
+
+                    // Inject meta area for duration/status
+                    const contentEl = nodeel.querySelector('.node-content');
+                    if (contentEl) {
+                        // Hide the checkbox area in view mode
+                        const checkboxArea = contentEl.querySelector('.node-checkbox-container') || contentEl.querySelector('div[style*="margin-top"]');
+                        if (checkboxArea) {
+                            checkboxArea.style.display = 'none';
+                        }
+                        // Inject .node-status if not present
+                        if (!contentEl.querySelector('.node-status')) {
+                            const statusDiv = document.createElement('div');
+                            statusDiv.className = 'node-status';
+                            contentEl.appendChild(statusDiv);
+                        }
+                        // Inject .flow-node-meta if not present
+                        if (!contentEl.querySelector('.flow-node-meta')) {
+                            const metaDiv = document.createElement('div');
+                            metaDiv.className = 'flow-node-meta';
+                            contentEl.appendChild(metaDiv);
+                        }
+                    }
+                });
+
+                applyNodeStatus(executedCodes, nodeStatusMap);
+                setupNodeClickHandlers(nodeData);
             } catch (e) {
                 console.error('Failed to render flow:', e);
                 const nodeLogs = flattenNodes(nodeData || []);

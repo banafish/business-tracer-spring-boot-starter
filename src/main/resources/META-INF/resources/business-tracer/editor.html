@@ -188,6 +188,7 @@
             border: 2px solid var(--gray-300);
             border-radius: 10px;
             min-width: 180px;
+            width: auto !important;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
         }
 
@@ -198,19 +199,77 @@
 
         .drawflow .drawflow-node .drawflow_content_node {
             padding: 0;
+            resize: both;
+            overflow: auto;
+            min-width: 180px;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+            box-sizing: border-box;
         }
 
         .drawflow .drawflow-node .inputs,
         .drawflow .drawflow-node .outputs {
-            position: relative;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: block;
         }
 
         .drawflow .drawflow-node .input,
         .drawflow .drawflow-node .output {
+            position: absolute;
             width: 14px;
             height: 14px;
             background: var(--primary);
             border: 2px solid white;
+            border-radius: 50%;
+            pointer-events: all;
+            z-index: 10;
+        }
+
+        /* Connecting state: hide outputs so inputs can receive drop events */
+        body.is-connecting .drawflow .drawflow-node .output {
+            pointer-events: none;
+        }
+
+        /* Top port */
+        .drawflow .drawflow-node .input_1,
+        .drawflow .drawflow-node .output_1 {
+            top: -7px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        /* Right port */
+        .drawflow .drawflow-node .input_2,
+        .drawflow .drawflow-node .output_2 {
+            top: 50%;
+            right: -7px;
+            left: auto;
+            transform: translateY(-50%);
+        }
+
+        /* Bottom port */
+        .drawflow .drawflow-node .input_3,
+        .drawflow .drawflow-node .output_3 {
+            bottom: -7px;
+            left: 50%;
+            top: auto;
+            transform: translateX(-50%);
+        }
+
+        /* Left port */
+        .drawflow .drawflow-node .input_4,
+        .drawflow .drawflow-node .output_4 {
+            top: 50%;
+            left: -7px;
+            transform: translateY(-50%);
         }
 
         .drawflow .connection .main-path {
@@ -221,6 +280,12 @@
         /* Custom Node Content */
         .node-content {
             padding: 12px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+            width: 100%;
+            height: 100%;
         }
 
         .node-content .node-code {
@@ -232,12 +297,25 @@
             font-weight: 600;
             display: inline-block;
             margin-bottom: 6px;
+            align-self: flex-start;
+            flex-shrink: 0;
         }
 
         .node-content .node-name {
             font-weight: 600;
             font-size: 0.9em;
             color: var(--gray-900);
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            word-break: break-all;
+        }
+
+        .node-content .node-checkbox-container {
+            margin-top: 8px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: flex-end;
         }
 
         /* Responsive adjustments */
@@ -323,6 +401,7 @@
         let allNodes = [];
         let isEditMode = false;
         let editFlowCode = null;
+        let resizeObserver = null;
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
@@ -330,6 +409,18 @@
             loadNodeList();
             checkEditMode();
             setupSearch();
+
+            // Handle overlapping input/output ports for connections
+            document.addEventListener('mousedown', function (e) {
+                if (e.target.classList.contains('output')) {
+                    setTimeout(() => {
+                        document.body.classList.add('is-connecting');
+                    }, 10);
+                }
+            });
+            document.addEventListener('mouseup', function () {
+                document.body.classList.remove('is-connecting');
+            });
         });
 
         // Initialize Drawflow
@@ -340,6 +431,36 @@
             editor.reroute_fix_curvature = true;
             editor.force_first_input = false;
             editor.start();
+
+            // Resize observer to update connections when node size changes
+            resizeObserver = new ResizeObserver((entries) => {
+                for (let entry of entries) {
+                    const el = entry.target;
+                    const nodeId = el.id.substring(5); // 'node-X'
+                    if (editor.getNodeFromId(nodeId)) {
+                        editor.updateConnectionNodes('node-' + nodeId);
+                    }
+                }
+            });
+
+            editor.on('nodeCreated', function (id) {
+                const nodeEl = document.getElementById('node-' + id);
+                if (nodeEl) {
+                    resizeObserver.observe(nodeEl);
+                }
+            });
+
+            // Prevent node dragging when resizing
+            container.addEventListener('mousedown', function (e) {
+                const nodeContent = e.target.closest('.drawflow_content_node');
+                if (nodeContent) {
+                    const rect = nodeContent.getBoundingClientRect();
+                    // Native resize handler is at the bottom right corner
+                    if (e.clientX > rect.right - 20 && e.clientY > rect.bottom - 20) {
+                        e.stopPropagation();
+                    }
+                }
+            }, { capture: true });
 
             // Drop handler
             container.addEventListener('drop', handleDrop);
@@ -418,7 +539,7 @@
                 <div class="node-content">
                     <div class="node-code">${code}</div>
                     <div class="node-name">${name}</div>
-                    <div style="margin-top: 8px;">
+                    <div class="node-checkbox-container">
                         <label style="font-size: 0.8em; cursor: pointer;" title="标记为结束节点">
                             <input type="checkbox" df-isEndNode ${isEndNode ? 'checked' : ''}> 结束节点
                         </label>
@@ -432,7 +553,7 @@
 
             editor.addNode(
                 code,
-                1, 1,
+                4, 4,
                 adjustedX, adjustedY,
                 code,
                 { code: code, name: name, isEndNode: isEndNode },
@@ -467,18 +588,25 @@
                     const drawflowData = dsl.rawNodesJson || dsl.drawflowData;
                     if (drawflowData && typeof drawflowData === 'object') {
                         editor.import(drawflowData);
-                        // Ensure checkboxes match data state
-                        setTimeout(() => {
-                            const nodes = document.querySelectorAll('.drawflow-node');
-                            nodes.forEach(nodeel => {
-                                const nodeId = nodeel.id.split('-')[1];
-                                const nodeData = editor.getNodeFromId(nodeId);
-                                if (nodeData && nodeData.data && (nodeData.data.isEndNode === true || nodeData.data.isEndNode === 'true')) {
+                        // Ensure checkboxes match data state and apply dimensions synchronously before first paint
+                        const nodes = document.querySelectorAll('.drawflow-node');
+                        nodes.forEach(nodeel => {
+                            if (resizeObserver) resizeObserver.observe(nodeel);
+                            const nodeId = nodeel.id.split('-')[1];
+                            const nodeData = editor.getNodeFromId(nodeId);
+                            if (nodeData && nodeData.data) {
+                                if (nodeData.data.isEndNode === true || nodeData.data.isEndNode === 'true') {
                                     const checkbox = nodeel.querySelector('input[type="checkbox"][df-isEndNode]');
                                     if (checkbox) checkbox.checked = true;
                                 }
-                            });
-                        }, 100);
+
+                                const contentNode = nodeel.querySelector('.drawflow_content_node');
+                                if (contentNode) {
+                                    if (nodeData.data.width) contentNode.style.width = nodeData.data.width;
+                                    if (nodeData.data.height) contentNode.style.height = nodeData.data.height;
+                                }
+                            }
+                        });
                     } else if (dsl.nodes && Array.isArray(dsl.nodes)) {
                         rebuildFromTree(dsl.nodes);
                     }
@@ -505,7 +633,7 @@
                     <div class="node-content">
                         <div class="node-code">${node.code}</div>
                         <div class="node-name">${name}</div>
-                        <div style="margin-top: 8px;">
+                        <div class="node-checkbox-container">
                             <label style="font-size: 0.8em; cursor: pointer;" title="标记为结束节点">
                                 <input type="checkbox" df-isEndNode ${isEndNode ? 'checked' : ''}> 结束节点
                             </label>
@@ -515,7 +643,7 @@
 
                 const newNodeId = editor.addNode(
                     node.code,
-                    1, 1,
+                    4, 4,
                     posX, posY,
                     node.code,
                     { code: node.code, name: name, isEndNode: isEndNode },
@@ -524,7 +652,7 @@
 
                 if (parentId !== null) {
                     try {
-                        editor.addConnection(parentId, newNodeId, 'output_1', 'input_1');
+                        editor.addConnection(parentId, newNodeId, 'output_3', 'input_1');
                     } catch (e) {
                         console.log('Connection failed:', e);
                     }
@@ -558,13 +686,22 @@
                 return;
             }
 
-            // Sync checkbox state with drawflow nodes before export
+            // Sync checkbox state and size with drawflow nodes before export
             const uiNodes = document.querySelectorAll('.drawflow-node');
             uiNodes.forEach(node => {
                 const nodeId = node.id.split('-')[1];
-                const checkbox = node.querySelector('input[type="checkbox"][df-isEndNode]');
-                if (checkbox && editor.drawflow.drawflow.Home.data[nodeId]) {
-                    editor.drawflow.drawflow.Home.data[nodeId].data.isEndNode = checkbox.checked;
+                const nodeData = editor.drawflow.drawflow.Home.data[nodeId];
+                if (nodeData) {
+                    const checkbox = node.querySelector('input[type="checkbox"][df-isEndNode]');
+                    if (checkbox) {
+                        nodeData.data.isEndNode = checkbox.checked;
+                    }
+
+                    const contentNode = node.querySelector('.drawflow_content_node');
+                    if (contentNode) {
+                        nodeData.data.width = contentNode.style.width;
+                        nodeData.data.height = contentNode.style.height;
+                    }
                 }
             });
 
