@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DSL管理 - Business Tracer</title>
+    <link rel="stylesheet" href="common.css">
+    <style>
+        /* Page-specific styles */
+        .dsl-actions {
+            display: flex;
+            gap: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-layout">
+        <!-- Sidebar injected by sidebar.js -->
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="page-header">
+                <h1 class="page-title">⚙️ DSL 管理</h1>
+                <p class="page-subtitle">管理业务流程 DSL 配置</p>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="toolbar-group">
+                        <input type="text" id="searchInput" class="form-control search-input"
+                            placeholder="搜索 Flow Code 或名称..." style="width: 250px;">
+                    </div>
+                    <div class="dsl-actions">
+                        <button class="btn btn-secondary" onclick="openCreateModal()">+ JSON 创建</button>
+                        <button class="btn btn-primary" onclick="openVisualEditor()">🎨 可视化创建</button>
+                    </div>
+                </div>
+
+                <table class="data-table" id="dslTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Flow Code</th>
+                            <th>名称</th>
+                            <th>布局</th>
+                            <th>创建时间</th>
+                            <th>更新时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dslTableBody">
+                        <!-- Data here -->
+                    </tbody>
+                </table>
+
+                <div id="emptyState" class="empty-state" style="display: none;">
+                    <h3>暂无 DSL 配置</h3>
+                    <p>点击上方按钮创建第一个 DSL 配置</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Create/Edit Modal -->
+    <div id="formModal" class="modal-overlay" onclick="closeModalOnOverlay(event)">
+        <div class="modal" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2 id="modalTitle">新建 DSL</h2>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="dslForm">
+                    <input type="hidden" id="formMode" value="create">
+
+                    <div class="form-group">
+                        <label class="form-label" for="flowCode">Flow Code *</label>
+                        <input type="text" id="flowCode" class="form-control" placeholder="e.g., ORDER_FLOW" required>
+                        <small class="text-muted" style="font-size: 0.85em;">唯一标识，创建后不可修改</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="name">名称 *</label>
+                        <input type="text" id="name" class="form-control" placeholder="e.g., 订单流程" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="layout">布局类型 *</label>
+                        <select id="layout" class="form-control" required>
+                            <option value="tree">Tree (树状)</option>
+                            <option value="timeline">Timeline (时间轴)</option>
+                            <option value="flow">Flow (流程图)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="nodesJson">节点配置 (JSON) *</label>
+                        <textarea id="nodesJson" class="form-control" rows="10"
+                            placeholder='[{"code": "NODE_CODE", "children": [{"code": "CHILD_NODE"}]}]' required
+                            style="font-family: 'Consolas', 'Monaco', monospace; font-size: 13px;"></textarea>
+                        <small class="text-muted" style="font-size: 0.85em;">JSON 格式的节点层级配置</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveDsl()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirm Modal -->
+    <div id="deleteModal" class="modal-overlay" onclick="closeModalOnOverlay(event)">
+        <div class="modal" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2>确认删除</h2>
+                <button class="modal-close" onclick="closeDeleteModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p>确定要删除 DSL: <strong id="deleteFlowCode"></strong> 吗？</p>
+                <p style="color: var(--danger); font-size: 0.9em;">此操作不可撤销</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeDeleteModal()">取消</button>
+                <button class="btn btn-danger" onclick="confirmDelete()">删除</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="sidebar.js"></script>
+    <script>
+        let dslList = [];
+        let filteredList = [];
+        let deleteTargetFlowCode = null;
+
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDslList();
+            setupSearch();
+        });
+
+        function setupSearch() {
+            document.getElementById('searchInput').addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase();
+                filteredList = dslList.filter(d =>
+                    d.flowCode.toLowerCase().includes(query) ||
+                    (d.name && d.name.toLowerCase().includes(query))
+                );
+                renderTable();
+            });
+        }
+
+        async function loadDslList() {
+            try {
+                const res = await fetch('/business-tracer/api/dsl');
+                const data = await res.json();
+                if (data.code === 200) {
+                    dslList = data.data || [];
+                    filteredList = dslList;
+                    renderTable();
+                } else {
+                    showToast('加载失败', 'error');
+                }
+            } catch (e) {
+                showToast('错误: ' + e.message, 'error');
+            }
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('dslTableBody');
+            const emptyState = document.getElementById('emptyState');
+
+            if (filteredList.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            tbody.innerHTML = filteredList.map(dsl => `
+                <tr>
+                    <td>${dsl.id}</td>
+                    <td><span class="badge badge-primary">${dsl.flowCode}</span></td>
+                    <td>${dsl.name || '-'}</td>
+                    <td><span class="badge badge-info">${dsl.layout || 'timeline'}</span></td>
+                    <td>${formatTime(dsl.createTime)}</td>
+                    <td>${formatTime(dsl.updateTime)}</td>
+                    <td>
+                        <div class="dsl-actions">
+                            <button class="btn btn-sm btn-primary" onclick="openVisualEditor('${dsl.flowCode}')" title="可视化编辑">🎨</button>
+                            <button class="btn btn-sm btn-secondary" onclick="openEditModal('${dsl.flowCode}')">编辑</button>
+                            <button class="btn btn-sm btn-danger" onclick="openDeleteModal('${dsl.flowCode}')">删除</button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function formatTime(time) {
+            if (!time) return '-';
+            return new Date(time).toLocaleString();
+        }
+
+        // Create Modal
+        function openCreateModal() {
+            document.getElementById('formMode').value = 'create';
+            document.getElementById('modalTitle').textContent = '新建 DSL';
+            document.getElementById('flowCode').value = '';
+            document.getElementById('flowCode').disabled = false;
+            document.getElementById('name').value = '';
+            document.getElementById('layout').value = 'tree';
+            document.getElementById('nodesJson').value = '[\n  {\n    "code": "NODE_CODE",\n    "children": []\n  }\n]';
+            document.getElementById('formModal').classList.add('show');
+        }
+
+        // Edit Modal
+        function openEditModal(flowCode) {
+            const dsl = dslList.find(d => d.flowCode === flowCode);
+            if (!dsl) return;
+
+            document.getElementById('formMode').value = 'edit';
+            document.getElementById('modalTitle').textContent = '编辑 DSL';
+            document.getElementById('flowCode').value = dsl.flowCode;
+            document.getElementById('flowCode').disabled = true;
+            document.getElementById('name').value = dsl.name || '';
+            document.getElementById('layout').value = dsl.layout || 'timeline';
+            document.getElementById('nodesJson').value = JSON.stringify(dsl.nodes || [], null, 2);
+            document.getElementById('formModal').classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('formModal').classList.remove('show');
+        }
+
+        function closeModalOnOverlay(event) {
+            if (event.target.classList.contains('modal-overlay')) {
+                event.target.classList.remove('show');
+            }
+        }
+
+        // Save DSL
+        async function saveDsl() {
+            const mode = document.getElementById('formMode').value;
+            const flowCode = document.getElementById('flowCode').value.trim();
+            const name = document.getElementById('name').value.trim();
+            const layout = document.getElementById('layout').value;
+            const nodesJson = document.getElementById('nodesJson').value.trim();
+
+            if (!flowCode || !name || !nodesJson) {
+                showToast('请填写所有必填字段', 'error');
+                return;
+            }
+
+            let nodes;
+            try {
+                nodes = JSON.parse(nodesJson);
+            } catch (e) {
+                showToast('节点配置 JSON 格式错误', 'error');
+                return;
+            }
+
+            const payload = { flowCode, name, layout, nodes };
+
+            try {
+                let res;
+                if (mode === 'create') {
+                    res = await fetch('/business-tracer/api/dsl', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                } else {
+                    res = await fetch(`/business-tracer/api/dsl/${flowCode}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                }
+
+                const data = await res.json();
+                if (data.code === 200) {
+                    showToast(data.message || '保存成功', 'success');
+                    closeModal();
+                    loadDslList();
+                } else {
+                    showToast(data.message || '操作失败', 'error');
+                }
+            } catch (e) {
+                showToast('错误: ' + e.message, 'error');
+            }
+        }
+
+        // Delete Modal
+        function openDeleteModal(flowCode) {
+            deleteTargetFlowCode = flowCode;
+            document.getElementById('deleteFlowCode').textContent = flowCode;
+            document.getElementById('deleteModal').classList.add('show');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').classList.remove('show');
+            deleteTargetFlowCode = null;
+        }
+
+        async function confirmDelete() {
+            if (!deleteTargetFlowCode) return;
+
+            try {
+                const res = await fetch(`/business-tracer/api/dsl/${deleteTargetFlowCode}`, {
+                    method: 'DELETE'
+                });
+                const data = await res.json();
+                if (data.code === 200) {
+                    showToast('删除成功', 'success');
+                    closeDeleteModal();
+                    loadDslList();
+                } else {
+                    showToast(data.message || '删除失败', 'error');
+                }
+            } catch (e) {
+                showToast('错误: ' + e.message, 'error');
+            }
+        }
+
+        // Open Visual Editor
+        function openVisualEditor(flowCode) {
+            if (flowCode) {
+                window.location.href = `editor.html?flowCode=${flowCode}`;
+            } else {
+                window.location.href = 'editor.html';
+            }
+        }
+    </script>
+</body>
+
+</html>

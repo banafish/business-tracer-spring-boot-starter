@@ -1,0 +1,1452 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Business Tracer - 流程日志</title>
+    <link rel="stylesheet" href="common.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/drawflow@0.0.59/dist/drawflow.min.css">
+    <style>
+        /* Page-specific styles */
+        .view-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--gray-200);
+        }
+
+        .view-tab {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 600;
+            color: var(--gray-500);
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+        }
+
+        .view-tab:hover {
+            color: var(--gray-700);
+        }
+
+        .view-tab.active {
+            color: var(--gradient-start);
+            border-bottom-color: var(--gradient-start);
+        }
+
+        .view-section {
+            display: none;
+        }
+
+        .view-section.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Timeline Layout */
+        .timeline {
+            position: relative;
+            padding: 20px 0;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 20px;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: linear-gradient(180deg, var(--gradient-start), var(--gradient-end));
+            border-radius: 2px;
+        }
+
+        .entry {
+            position: relative;
+            padding-left: 55px;
+            margin-bottom: 20px;
+        }
+
+        .entry::before {
+            content: '';
+            position: absolute;
+            left: 10px;
+            top: 8px;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: white;
+            border: 3px solid var(--gradient-start);
+            z-index: 1;
+        }
+
+        /* Tree Layout */
+        .tree {
+            padding: 20px 0;
+        }
+
+        .tree-node {
+            margin-left: 24px;
+            position: relative;
+        }
+
+        .tree-node::before {
+            content: '';
+            position: absolute;
+            left: -20px;
+            top: 0;
+            height: 100%;
+            width: 2px;
+            background: var(--gray-300);
+        }
+
+        .tree-node::after {
+            content: '';
+            position: absolute;
+            left: -20px;
+            top: 20px;
+            width: 16px;
+            height: 2px;
+            background: var(--gray-300);
+        }
+
+        .tree-node:last-child::before {
+            height: 20px;
+        }
+
+        .tree-root {
+            margin-left: 0;
+        }
+
+        .tree-root::before,
+        .tree-root::after {
+            display: none;
+        }
+
+        .tree-node-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 0;
+            cursor: pointer;
+        }
+
+        .tree-toggle {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--gray-200);
+            border-radius: 4px;
+            font-size: 12px;
+            color: var(--gray-700);
+        }
+
+        .tree-children {
+            display: block;
+        }
+
+        .tree-children.collapsed {
+            display: none;
+        }
+
+        /* Node Cards */
+        .node-card {
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: 10px;
+            padding: 16px;
+            transition: all 0.2s;
+            margin-bottom: 8px;
+            cursor: pointer;
+        }
+
+        .node-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            border-color: var(--primary);
+        }
+
+        .node-card.has-details {
+            border-left: 4px solid var(--gradient-start);
+        }
+
+        .node-card.has-details::after {
+            content: '📋 点击查看详情';
+            display: block;
+            margin-top: 8px;
+            font-size: 0.8em;
+            color: var(--primary);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .code-badge {
+            font-size: 0.75em;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .time {
+            font-size: 0.85em;
+            color: var(--gray-500);
+        }
+
+        .app-name {
+            font-size: 0.8em;
+            background: var(--gray-100);
+            padding: 3px 8px;
+            border-radius: 4px;
+            color: var(--gray-700);
+        }
+
+        .node-name {
+            font-weight: bold;
+            font-size: 1.1em;
+            color: var(--gray-900);
+        }
+
+        .node-content {
+            font-size: 0.95em;
+            line-height: 1.6;
+            color: var(--gray-700);
+        }
+
+        .node-meta {
+            margin-top: 10px;
+            font-size: 0.8em;
+            color: var(--gray-500);
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .detail-count-badge {
+            background: var(--warning);
+            color: white;
+            font-size: 0.7em;
+            padding: 2px 6px;
+            border-radius: 10px;
+            margin-left: 8px;
+        }
+
+        .empty-node {
+            color: var(--gray-500);
+            font-style: italic;
+            padding: 8px 0;
+        }
+
+        /* Status Badges */
+        .badge-success {
+            background: var(--success, #2ecc71);
+        }
+
+        .badge-danger {
+            background: var(--danger, #e74c3c);
+        }
+
+        .badge-secondary {
+            background: var(--gray-500, #95a5a6);
+        }
+
+        /* ===== FAILED Node Card ===== */
+        .node-card-failed {
+            border-left: 4px solid var(--danger) !important;
+            background: #fff5f5 !important;
+        }
+
+        .node-card-failed:hover {
+            border-color: var(--danger) !important;
+            box-shadow: 0 8px 25px rgba(231, 76, 60, 0.15) !important;
+        }
+
+        /* Duration Badge */
+        .duration-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.75em;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 12px;
+            color: white;
+            white-space: nowrap;
+        }
+
+        .duration-fast {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+        }
+
+        .duration-medium {
+            background: linear-gradient(135deg, #e67e22, #f39c12);
+        }
+
+        .duration-slow {
+            background: linear-gradient(135deg, #c0392b, #e74c3c);
+        }
+
+        /* Status Tag */
+        .status-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.75em;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 12px;
+            color: white;
+        }
+
+        .status-tag-success {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+        }
+
+        .status-tag-failed {
+            background: linear-gradient(135deg, #c0392b, #e74c3c);
+        }
+
+        .status-tag-default {
+            background: var(--gray-500);
+        }
+
+        /* Collapsible Info Section */
+        .info-section {
+            margin-top: 10px;
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            overflow: hidden;
+            background: var(--gray-100);
+        }
+
+        .info-section-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            font-size: 0.8em;
+            font-weight: 600;
+            color: var(--gray-700);
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s;
+        }
+
+        .info-section-header:hover {
+            background: var(--gray-200);
+        }
+
+        .info-section-header .toggle-icon {
+            transition: transform 0.2s;
+            font-size: 0.7em;
+        }
+
+        .info-section-header .toggle-icon.expanded {
+            transform: rotate(90deg);
+        }
+
+        .info-section-body {
+            display: none;
+            padding: 8px 12px;
+            border-top: 1px solid var(--gray-200);
+            max-height: 200px;
+            overflow: auto;
+        }
+
+        .info-section-body.show {
+            display: block;
+        }
+
+        .info-section-body pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-break: break-all;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.85em;
+            line-height: 1.5;
+            color: var(--gray-700);
+        }
+
+        /* Exception Block */
+        .exception-section {
+            border-color: #fecaca;
+            background: #fef2f2;
+        }
+
+        .exception-section .info-section-header {
+            color: var(--danger);
+        }
+
+        .exception-section .info-section-body {
+            border-top-color: #fecaca;
+        }
+
+        .exception-section .info-section-body pre {
+            color: #991b1b;
+        }
+
+        /* Detail Item FAILED */
+        .detail-item-failed {
+            border-left-color: var(--danger) !important;
+            background: #fef2f2 !important;
+        }
+
+        .detail-item-failed .detail-content {
+            color: #991b1b;
+        }
+
+        /* Drawflow FAILED Node */
+        .drawflow .drawflow-node.failed {
+            border-color: var(--danger) !important;
+            background: #fff5f5 !important;
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.2) !important;
+        }
+
+        .flow-node-content .node-status.failed {
+            color: var(--danger);
+            font-weight: 700;
+        }
+
+        /* Node info grid in detail panel */
+        .node-info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .node-info-item {
+            background: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--gray-200);
+        }
+
+        .node-info-label {
+            font-size: 0.7em;
+            color: var(--gray-500);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+        }
+
+        .node-info-value {
+            font-size: 0.9em;
+            font-weight: 600;
+            color: var(--gray-900);
+        }
+
+        /* Flow/Drawflow Layout */
+        .flow-container {
+            width: 100%;
+            height: 100%;
+            min-height: 400px;
+            border: 2px solid var(--gray-300);
+            border-radius: 12px;
+            overflow: hidden;
+            background: #f0f2f5;
+            background-image: radial-gradient(circle, #ccc 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        #drawflowViewer {
+            width: 100%;
+            height: 100%;
+        }
+
+        .drawflow .drawflow-node {
+            background: white;
+            border: 2px solid var(--gray-300);
+            border-radius: 10px;
+            min-width: 180px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s;
+        }
+
+        .drawflow .drawflow-node.executed {
+            border-color: var(--success);
+            background: #f0fff4;
+        }
+
+        .drawflow .drawflow-node.pending {
+            border-color: var(--gray-400);
+            background: #f8f9fa;
+            opacity: 0.7;
+        }
+
+        .drawflow .drawflow-node .inputs,
+        .drawflow .drawflow-node .outputs {
+            position: relative;
+        }
+
+        .drawflow .drawflow-node .input,
+        .drawflow .drawflow-node .output {
+            width: 12px;
+            height: 12px;
+            background: var(--primary);
+            border: 2px solid white;
+        }
+
+        .drawflow .connection .main-path {
+            stroke: var(--primary);
+            stroke-width: 2px;
+        }
+
+        .drawflow-node .node-content {
+            padding: 12px;
+            cursor: pointer;
+        }
+
+        .drawflow-node .node-content:hover {
+            background: var(--gray-100);
+        }
+
+        .drawflow-node .node-content .node-code {
+            font-size: 0.65em;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 5px;
+        }
+
+        .drawflow-node .node-content .node-name {
+            font-weight: 600;
+            font-size: 0.85em;
+            color: var(--gray-900);
+        }
+
+        .drawflow-node .node-content .flow-node-meta {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 6px;
+            flex-wrap: wrap;
+        }
+
+        .drawflow-node .node-content .node-status {
+            font-size: 0.7em;
+            margin-top: 4px;
+        }
+
+        .drawflow-node .node-content .node-status.executed {
+            color: var(--success);
+        }
+
+        .drawflow-node .node-content .node-status.pending {
+            color: var(--gray-500);
+        }
+
+        .drawflow-node .node-content .node-status.failed {
+            color: var(--danger);
+            font-weight: 700;
+        }
+
+        .flow-duration-badge {
+            font-size: 0.65em;
+            padding: 2px 6px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+        }
+
+        /* Layout info */
+        .layout-info {
+            text-align: center;
+            padding: 10px;
+            background: var(--gray-100);
+            border-radius: 8px;
+            font-size: 0.9em;
+            color: var(--gray-700);
+            margin-bottom: 16px;
+        }
+
+        .layout-info .dsl-name {
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        /* Detail Panel for Master-Detail */
+        .detail-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--gray-500);
+            text-align: center;
+            padding: 40px;
+        }
+
+        .detail-placeholder-icon {
+            font-size: 3em;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .detail-list {
+            padding: 0;
+        }
+
+        .detail-item {
+            background: var(--gray-100);
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 10px;
+            border-left: 3px solid var(--primary);
+        }
+
+        .detail-time {
+            font-size: 0.8em;
+            color: var(--gray-500);
+            margin-bottom: 4px;
+        }
+
+        .detail-content {
+            font-size: 0.95em;
+            color: var(--gray-700);
+            line-height: 1.5;
+        }
+
+        .selected-node-info {
+            padding: 16px;
+            border-bottom: 1px solid var(--gray-200);
+            background: var(--gray-100);
+        }
+
+        .selected-node-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .selected-node-meta {
+            font-size: 0.85em;
+            color: var(--gray-500);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-layout">
+        <!-- Sidebar injected by sidebar.js -->
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="page-header">
+                <h1 class="page-title">📊 业务链路追踪</h1>
+            </div>
+
+            <!-- View Tabs -->
+            <div class="view-tabs">
+                <button class="view-tab active" data-view="list" onclick="switchView('list')">流程日志</button>
+                <button class="view-tab" data-view="trace" onclick="switchView('trace')">链路追踪</button>
+            </div>
+
+            <!-- LIST VIEW -->
+            <div id="listView" class="view-section active">
+                <div class="card">
+                    <div class="toolbar">
+                        <div class="toolbar-group">
+                            <input type="text" id="listFlowCode" class="form-control search-input"
+                                placeholder="Flow Code" style="width: 160px;">
+                            <input type="text" id="listBusinessId" class="form-control search-input"
+                                placeholder="Business ID" style="width: 160px;">
+                            <button class="btn btn-primary" onclick="fetchFlowList(1)">🔍 搜索</button>
+                        </div>
+                    </div>
+
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>流程名称</th>
+                                <th>Flow Code</th>
+                                <th>Business ID</th>
+                                <th>状态</th>
+                                <th>创建时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="flowListBody">
+                            <!-- Data here -->
+                        </tbody>
+                    </table>
+
+                    <div class="pagination" id="paginationControls"></div>
+                </div>
+            </div>
+
+            <!-- TRACE VIEW -->
+            <div id="traceView" class="view-section">
+                <div class="toolbar mb-4">
+                    <div class="toolbar-group">
+                        <input type="text" id="traceBusinessId" class="form-control search-input"
+                            placeholder="Business ID (e.g., 1001)">
+                        <input type="hidden" id="traceFlowCode">
+                        <select id="layoutType" class="form-control" style="width: 140px;">
+                            <option value="auto">自动布局</option>
+                            <option value="timeline">时间轴</option>
+                            <option value="tree">树状图</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="manualTraceSearch()">🔍 追踪</button>
+                    </div>
+                </div>
+
+                <!-- Master-Detail Layout -->
+                <div class="master-detail">
+                    <div class="master-panel">
+                        <div class="panel-header">流程视图</div>
+                        <div class="panel-body" id="result">
+                            <div class="detail-placeholder">
+                                <div class="detail-placeholder-icon">🔍</div>
+                                <div>输入 Business ID 开始追踪</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="detail-panel">
+                        <div class="panel-header">节点详情</div>
+                        <div class="panel-body" id="detailPanel">
+                            <div class="detail-placeholder">
+                                <div class="detail-placeholder-icon">👆</div>
+                                <div>点击左侧节点查看详情</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Detail Modal (fallback for timeline/tree view) -->
+    <div id="detailModal" class="modal-overlay" onclick="closeModalOnOverlay(event)">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="modalTitle">流程详情</h2>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/drawflow@0.0.59/dist/drawflow.min.js"></script>
+    <script src="sidebar.js"></script>
+    <script>
+        // State
+        let currentData = null;
+        let currentPage = 1;
+        let pageSize = 10;
+        let flowEditor = null;
+
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const pBizId = urlParams.get('businessId');
+            const pFlowCode = urlParams.get('flowCode');
+            const pView = urlParams.get('view');
+
+            if (pBizId || pView === 'trace') {
+                switchView('trace');
+                if (pBizId) {
+                    document.getElementById('traceBusinessId').value = pBizId;
+                    document.getElementById('traceFlowCode').value = pFlowCode || '';
+                    fetchTrace(pBizId, pFlowCode);
+                }
+            } else {
+                fetchFlowList(1);
+            }
+        });
+
+        // ================= VIEW SWITCHING =================
+        function switchView(viewName) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.view-tab').forEach(el => el.classList.remove('active'));
+
+            document.getElementById(viewName + 'View').classList.add('active');
+            document.querySelector(`.view-tab[data-view="${viewName}"]`).classList.add('active');
+
+            // Update URL
+            const url = new URL(window.location);
+            if (viewName === 'trace') {
+                url.searchParams.set('view', 'trace');
+            } else {
+                url.searchParams.delete('view');
+                url.searchParams.delete('businessId');
+                url.searchParams.delete('flowCode');
+            }
+            history.pushState(null, '', url);
+        }
+
+        // ================= LIST VIEW LOGIC =================
+        async function fetchFlowList(page) {
+            currentPage = page;
+            const flowCode = document.getElementById('listFlowCode').value.trim();
+            const businessId = document.getElementById('listBusinessId').value.trim();
+            const tbody = document.getElementById('flowListBody');
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center">Loading...</td></tr>';
+
+            try {
+                const query = new URLSearchParams({ pageNum: page, pageSize: pageSize });
+                if (flowCode) query.append('flowCode', flowCode);
+                if (businessId) query.append('businessId', businessId);
+
+                const res = await fetch(`/business-tracer/api/flow-logs?${query}`);
+                const data = await res.json();
+                renderList(data);
+            } catch (e) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center" style="color:var(--danger);">Error: ${e.message}</td></tr>`;
+            }
+        }
+
+        function renderList(data) {
+            const list = data.list || [];
+            const tbody = document.getElementById('flowListBody');
+            tbody.innerHTML = '';
+
+            if (list.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">暂无数据</td></tr>';
+                return;
+            }
+
+            list.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${item.id}</td>
+                    <td>${item.name || '-'}</td>
+                    <td><span class="badge badge-primary">${item.flowCode}</span></td>
+                    <td><a href="#" onclick="goToTrace('${item.businessId}', '${item.flowCode}')" style="font-weight:bold; color:var(--primary);">${item.businessId}</a></td>
+                    <td>${renderStatus(item.status)}</td>
+                    <td>${new Date(item.createTime).toLocaleString()}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" onclick="goToTrace('${item.businessId}', '${item.flowCode}')">查看</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            renderPagination(data.total, data.pageNum, data.pageSize);
+        }
+
+        function renderStatus(status) {
+            if (status === 'COMPLETED') return '<span class="badge badge-success">已完成</span>';
+            if (status === 'FAILED') return '<span class="badge badge-danger">出现异常</span>';
+            return '<span class="badge badge-secondary">进行中</span>';
+        }
+
+        function goToTrace(businessId, flowCode) {
+            document.getElementById('traceBusinessId').value = businessId;
+            document.getElementById('traceFlowCode').value = flowCode || '';
+            switchView('trace');
+            fetchTrace(businessId, flowCode);
+        }
+
+        function renderPagination(total, current, size) {
+            const totalPages = Math.ceil(total / size);
+            const container = document.getElementById('paginationControls');
+            container.innerHTML = '';
+            if (totalPages <= 1) return;
+
+            const prev = document.createElement('button');
+            prev.className = 'page-btn';
+            prev.textContent = '‹';
+            prev.disabled = current === 1;
+            prev.onclick = () => fetchFlowList(current - 1);
+            container.appendChild(prev);
+
+            const info = document.createElement('span');
+            info.style.padding = '8px';
+            info.textContent = `${current} / ${totalPages}`;
+            container.appendChild(info);
+
+            const next = document.createElement('button');
+            next.className = 'page-btn';
+            next.textContent = '›';
+            next.disabled = current === totalPages;
+            next.onclick = () => fetchFlowList(current + 1);
+            container.appendChild(next);
+        }
+
+        // ================= TRACE VIEW LOGIC =================
+        function manualTraceSearch() {
+            const businessId = document.getElementById('traceBusinessId').value.trim();
+            const flowCode = document.getElementById('traceFlowCode').value.trim();
+            if (!businessId) {
+                showToast('请输入 Business ID', 'error');
+                return;
+            }
+            fetchTrace(businessId, flowCode);
+        }
+
+        async function fetchTrace(bizId, flowCode) {
+            const resultDiv = document.getElementById('result');
+            const detailPanel = document.getElementById('detailPanel');
+
+            resultDiv.innerHTML = '<div class="loading">加载中</div>';
+            detailPanel.innerHTML = '<div class="detail-placeholder"><div class="detail-placeholder-icon">👆</div><div>点击左侧节点查看详情</div></div>';
+
+            // Update URL
+            const url = new URL(window.location);
+            url.searchParams.set('view', 'trace');
+            url.searchParams.set('businessId', bizId);
+            if (flowCode && flowCode !== 'null' && flowCode !== 'undefined') {
+                url.searchParams.set('flowCode', flowCode);
+            }
+            history.pushState(null, '', url);
+
+            try {
+                let api = `/business-tracer/trace?businessId=${encodeURIComponent(bizId)}`;
+                if (flowCode && flowCode !== 'null' && flowCode !== 'undefined') {
+                    api += `&flowCode=${encodeURIComponent(flowCode)}`;
+                }
+
+                const response = await fetch(api);
+                if (!response.ok) throw new Error(`API Error: ${response.status}`);
+                currentData = await response.json();
+                renderData();
+            } catch (e) {
+                resultDiv.innerHTML = `<div style="color:var(--danger);padding:20px;text-align:center;">加载失败: ${e.message}</div>`;
+            }
+        }
+
+        function renderData() {
+            const layoutSelect = document.getElementById('layoutType');
+            let layout = layoutSelect.value;
+            if (layout === 'auto') layout = currentData.layout || 'timeline';
+
+            if (layout === 'flow' && currentData.drawflowData) {
+                renderFlow(currentData.drawflowData, currentData.nodes);
+            } else if (layout === 'tree' && currentData.nodes) {
+                renderTree(currentData.nodes);
+            } else {
+                const nodeLogs = flattenNodes(currentData.nodes || []);
+                renderTimeline(nodeLogs);
+            }
+        }
+
+        function renderFlow(drawflowData, nodeData) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = 'panel-body';
+            resultDiv.innerHTML = '<div class="flow-container"><div id="drawflowViewer"></div></div>';
+
+            const container = document.getElementById('drawflowViewer');
+            flowEditor = new Drawflow(container);
+            flowEditor.editor_mode = 'view';
+            flowEditor.start();
+
+            try {
+                flowEditor.import(drawflowData);
+                const executedCodes = new Set();
+                const nodeStatusMap = new Map();
+                if (nodeData) collectExecutedCodes(nodeData, executedCodes, nodeStatusMap);
+
+                setTimeout(() => {
+                    // Ensure checkboxes match data state for end nodes
+                    const uiNodes = document.querySelectorAll('.drawflow-node');
+                    uiNodes.forEach(nodeel => {
+                        const nodeId = nodeel.id.split('-')[1];
+                        const nData = flowEditor.getNodeFromId(nodeId);
+                        if (nData && nData.data && (nData.data.isEndNode === true || nData.data.isEndNode === 'true')) {
+                            const checkbox = nodeel.querySelector('input[type="checkbox"][df-isEndNode]');
+                            if (checkbox) checkbox.checked = true;
+                        }
+
+                        // Disable checkbox in view mode
+                        const allCheckboxes = nodeel.querySelectorAll('input[type="checkbox"]');
+                        allCheckboxes.forEach(cb => cb.disabled = true);
+
+                        // Inject meta area for duration/status
+                        const contentEl = nodeel.querySelector('.node-content');
+                        if (contentEl) {
+                            // Hide the checkbox area in view mode
+                            const checkboxArea = contentEl.querySelector('div[style*="margin-top"]');
+                            if (checkboxArea && checkboxArea.querySelector('input[type="checkbox"]')) {
+                                checkboxArea.style.display = 'none';
+                            }
+                            // Inject .node-status if not present
+                            if (!contentEl.querySelector('.node-status')) {
+                                const statusDiv = document.createElement('div');
+                                statusDiv.className = 'node-status';
+                                contentEl.appendChild(statusDiv);
+                            }
+                            // Inject .flow-node-meta if not present
+                            if (!contentEl.querySelector('.flow-node-meta')) {
+                                const metaDiv = document.createElement('div');
+                                metaDiv.className = 'flow-node-meta';
+                                contentEl.appendChild(metaDiv);
+                            }
+                        }
+                    });
+
+                    applyNodeStatus(executedCodes, nodeStatusMap);
+                    setupNodeClickHandlers(nodeData);
+                }, 100);
+            } catch (e) {
+                console.error('Failed to render flow:', e);
+                const nodeLogs = flattenNodes(nodeData || []);
+                renderTimeline(nodeLogs);
+            }
+        }
+
+        function collectExecutedCodes(nodes, executedCodes, nodeStatusMap) {
+            for (const node of nodes) {
+                if (node.logs && node.logs.length > 0) {
+                    executedCodes.add(node.code);
+                    const log = node.logs[0];
+                    nodeStatusMap.set(node.code, {
+                        status: log.status,
+                        costTime: log.costTime
+                    });
+                }
+                if (node.children) collectExecutedCodes(node.children, executedCodes, nodeStatusMap);
+            }
+        }
+
+        function applyNodeStatus(executedCodes, nodeStatusMap) {
+            document.querySelectorAll('.drawflow-node').forEach(nodeEl => {
+                const nodeId = nodeEl.id.replace('node-', '');
+                const nodeInfo = flowEditor.getNodeFromId(nodeId);
+                if (nodeInfo?.data?.code) {
+                    const code = nodeInfo.data.code;
+                    if (executedCodes.has(code)) {
+                        const info = nodeStatusMap.get(code) || {};
+                        if (info.status === 'FAILED') {
+                            nodeEl.classList.add('failed');
+                        } else {
+                            nodeEl.classList.add('executed');
+                        }
+                        // Update the flow node content with status and duration
+                        const statusEl = nodeEl.querySelector('.node-status');
+                        if (statusEl) {
+                            if (info.status === 'FAILED') {
+                                statusEl.className = 'node-status failed';
+                                statusEl.innerHTML = '❌ FAILED';
+                            } else {
+                                statusEl.className = 'node-status executed';
+                                statusEl.innerHTML = '✅ 已执行';
+                            }
+                        }
+                        const metaEl = nodeEl.querySelector('.flow-node-meta');
+                        if (metaEl && info.costTime != null) {
+                            metaEl.innerHTML = renderDurationBadge(info.costTime, true);
+                        }
+                    } else {
+                        nodeEl.classList.add('pending');
+                    }
+                }
+            });
+        }
+
+        function setupNodeClickHandlers(nodeData) {
+            document.querySelectorAll('.drawflow-node').forEach(nodeEl => {
+                nodeEl.style.cursor = 'pointer';
+                nodeEl.addEventListener('click', () => {
+                    const nodeId = nodeEl.id.replace('node-', '');
+                    const nodeInfo = flowEditor.getNodeFromId(nodeId);
+                    if (nodeInfo?.data) {
+                        const code = nodeInfo.data.code;
+                        const nodeWithLogs = findNodeByCode(nodeData, code);
+                        if (nodeWithLogs?.logs?.length > 0) {
+                            const log = nodeWithLogs.logs[0];
+                            loadAndShowDetails(log);
+                        } else {
+                            showDetailPanel({ code: code, name: nodeInfo.data.name || code }, []);
+                        }
+                    }
+                });
+            });
+        }
+
+        function findNodeByCode(nodes, code) {
+            if (!nodes) return null;
+            for (const node of nodes) {
+                if (node.code === code) return node;
+                if (node.children) {
+                    const found = findNodeByCode(node.children, code);
+                    if (found) return found;
+                }
+            }
+            return null;
+        }
+
+        function flattenNodes(nodes) {
+            const logs = [];
+            function collect(nodeList) {
+                for (const node of nodeList) {
+                    if (node.logs) logs.push(...node.logs);
+                    if (node.children) collect(node.children);
+                }
+            }
+            collect(nodes);
+            logs.sort((a, b) => new Date(a.createTime) - new Date(b.createTime));
+            return logs;
+        }
+
+        async function loadAndShowDetails(log) {
+            const panel = document.getElementById('detailPanel');
+            panel.innerHTML = '<div class="detail-placeholder"><div>加载详情中...</div></div>';
+            try {
+                const res = await fetch(`/business-tracer/trace/details?parentNodeId=${encodeURIComponent(log.nodeId || '')}`);
+                const details = await res.json();
+                showDetailPanel(log, details);
+            } catch (e) {
+                panel.innerHTML = `<div style="color:var(--danger);padding:20px;text-align:center;">加载失败: ${e.message}</div>`;
+            }
+        }
+
+        function renderTimeline(logs) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '';
+            resultDiv.className = 'panel-body timeline';
+
+            if (!logs || logs.length === 0) {
+                resultDiv.innerHTML = '<div style="color:var(--gray-500);padding:20px;text-align:center;">未找到日志记录</div>';
+                return;
+            }
+
+            logs.forEach(log => {
+                const entry = document.createElement('div');
+                entry.className = 'entry';
+                const timeStr = log.createTime ? new Date(log.createTime).toLocaleString() : '-';
+                const displayName = log.name || log.code || log.content || 'Unknown';
+                const isFailed = log.status === 'FAILED';
+
+                entry.innerHTML = `
+                    <div class="node-card ${isFailed ? 'node-card-failed' : ''}">
+                        <div class="card-header">
+                            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                ${log.code ? `<span class="code-badge">${log.code}</span>` : ''}
+                                <span class="app-name">${log.appName || 'Unknown'}</span>
+                                ${renderStatusTag(log.status)}
+                                ${renderDurationBadge(log.costTime)}
+                            </div>
+                            <span class="time">${timeStr}</span>
+                        </div>
+                        <div class="node-name">${displayName}</div>
+                        ${log.content && log.content !== displayName ? `<div class="node-content">${log.content}</div>` : ''}
+                        <div class="node-meta">
+                            <span>NodeID: ${shortHash(log.nodeId)}</span>
+                            <span>TraceID: ${shortHash(log.traceId)}</span>
+                        </div>
+                        ${renderInfoSections(log)}
+                    </div>
+                `;
+                entry.querySelector('.node-card').onclick = () => loadAndShowDetails(log);
+                bindInfoToggle(entry);
+                resultDiv.appendChild(entry);
+            });
+        }
+
+        function renderTree(nodes) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '';
+            resultDiv.className = 'panel-body tree';
+
+            if (!nodes || nodes.length === 0) {
+                resultDiv.innerHTML = '<div style="color:var(--gray-500);padding:20px;text-align:center;">未找到日志记录</div>';
+                return;
+            }
+
+            nodes.forEach(node => resultDiv.appendChild(createTreeNode(node, true)));
+        }
+
+        function createTreeNode(node, isRoot = false) {
+            const nodeDiv = document.createElement('div');
+            nodeDiv.className = `tree-node ${isRoot ? 'tree-root' : ''}`;
+            const hasChildren = node.children && node.children.length > 0;
+            const nodeStatus = getNodeStatus(node);
+
+            const header = document.createElement('div');
+            header.className = 'tree-node-header';
+            header.innerHTML = `
+                <span class="tree-toggle">${hasChildren ? '▼' : '○'}</span>
+                <span class="code-badge">${node.code}</span>
+                <span class="node-name">${getNodeDisplayName(node)}</span>
+                <span style="color: var(--gray-500); font-size: 0.85em;">(${node.logs ? node.logs.length : 0})</span>
+                ${nodeStatus === 'FAILED' ? renderStatusTag('FAILED') : ''}
+                ${node.logs && node.logs.length > 0 && node.logs[0].costTime != null ? renderDurationBadge(node.logs[0].costTime) : ''}
+            `;
+
+            const childrenDiv = document.createElement('div');
+            childrenDiv.className = 'tree-children';
+
+            if (node.logs && node.logs.length > 0) {
+                node.logs.forEach(log => {
+                    childrenDiv.appendChild(createNodeCard(log));
+                });
+            } else {
+                const empty = document.createElement('div');
+                empty.className = 'empty-node';
+                empty.textContent = '暂无记录';
+                childrenDiv.appendChild(empty);
+            }
+
+            if (node.children) {
+                node.children.forEach(child => childrenDiv.appendChild(createTreeNode(child)));
+            }
+
+            if (hasChildren) {
+                header.onclick = () => {
+                    childrenDiv.classList.toggle('collapsed');
+                    header.querySelector('.tree-toggle').textContent = childrenDiv.classList.contains('collapsed') ? '▶' : '▼';
+                };
+            }
+
+            nodeDiv.appendChild(header);
+            nodeDiv.appendChild(childrenDiv);
+            return nodeDiv;
+        }
+
+        function getNodeDisplayName(node) {
+            if (node.logs && node.logs.length > 0) return node.logs[0].name || node.logs[0].code || node.code;
+            return node.code;
+        }
+
+        function createNodeCard(log) {
+            const card = document.createElement('div');
+            const isFailed = log.status === 'FAILED';
+            card.className = `node-card ${isFailed ? 'node-card-failed' : ''}`;
+            const timeStr = log.createTime ? new Date(log.createTime).toLocaleString() : '-';
+            const displayName = log.name || log.code || log.content || 'Unknown';
+
+            card.innerHTML = `
+                <div class="card-header">
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <span class="app-name">${log.appName || 'Unknown'}</span>
+                        ${renderStatusTag(log.status)}
+                        ${renderDurationBadge(log.costTime)}
+                    </div>
+                    <span class="time">${timeStr}</span>
+                </div>
+                <div class="node-name">${displayName}</div>
+                ${log.content ? `<div class="node-content">${log.content}</div>` : ''}
+                <div class="node-meta">
+                    <span>NodeID: ${shortHash(log.nodeId)}</span>
+                    <span>TraceID: ${shortHash(log.traceId)}</span>
+                </div>
+                ${renderInfoSections(log)}
+            `;
+            card.onclick = () => loadAndShowDetails(log);
+            bindInfoToggle(card);
+            return card;
+        }
+
+        // ================= DETAIL PANEL (Master-Detail) =================
+        function showDetailPanel(node, details) {
+            const panel = document.getElementById('detailPanel');
+            const nodeName = node.name || node.code || 'Unknown';
+            const timeStr = node.createTime ? new Date(node.createTime).toLocaleString() : '-';
+            const isFailed = node.status === 'FAILED';
+
+            let html = `
+                <div class="selected-node-info" style="${isFailed ? 'background: #fef2f2; border-bottom-color: #fecaca;' : ''}">
+                    <div class="selected-node-header">
+                        ${node.code ? `<span class="code-badge">${node.code}</span>` : ''}
+                        <span class="font-bold">${nodeName}</span>
+                        ${renderStatusTag(node.status)}
+                    </div>
+                    <div class="node-info-grid">
+                        ${node.createTime ? `<div class="node-info-item"><div class="node-info-label">创建时间</div><div class="node-info-value">${timeStr}</div></div>` : ''}
+                        ${node.costTime != null ? `<div class="node-info-item"><div class="node-info-label">执行耗时</div><div class="node-info-value">${renderDurationBadge(node.costTime)}</div></div>` : ''}
+                        ${node.appName ? `<div class="node-info-item"><div class="node-info-label">应用名</div><div class="node-info-value">${node.appName}</div></div>` : ''}
+                        ${node.nodeId ? `<div class="node-info-item"><div class="node-info-label">Node ID</div><div class="node-info-value" title="${node.nodeId}">${shortHash(node.nodeId)}</div></div>` : ''}
+                        ${node.traceId ? `<div class="node-info-item"><div class="node-info-label">Trace ID</div><div class="node-info-value" title="${node.traceId}">${shortHash(node.traceId)}</div></div>` : ''}
+                    </div>
+                    ${node.inputParams ? `
+                    <div class="info-section" style="margin-top: 12px;">
+                        <div class="info-section-header" onclick="this.nextElementSibling.classList.toggle('show'); this.querySelector('.toggle-icon').classList.toggle('expanded');">
+                            <span class="toggle-icon">▶</span> 📥 入参
+                        </div>
+                        <div class="info-section-body"><pre>${formatJsonSafe(node.inputParams)}</pre></div>
+                    </div>` : ''}
+                    ${node.outputParams ? `
+                    <div class="info-section" style="margin-top: 8px;">
+                        <div class="info-section-header" onclick="this.nextElementSibling.classList.toggle('show'); this.querySelector('.toggle-icon').classList.toggle('expanded');">
+                            <span class="toggle-icon">▶</span> 📤 出参
+                        </div>
+                        <div class="info-section-body"><pre>${formatJsonSafe(node.outputParams)}</pre></div>
+                    </div>` : ''}
+                    ${node.exception ? `
+                    <div class="info-section exception-section" style="margin-top: 8px;">
+                        <div class="info-section-header" onclick="this.nextElementSibling.classList.toggle('show'); this.querySelector('.toggle-icon').classList.toggle('expanded');">
+                            <span class="toggle-icon expanded">▶</span> ❌ 异常信息
+                        </div>
+                        <div class="info-section-body show"><pre>${escapeHtml(node.exception)}</pre></div>
+                    </div>` : ''}
+                </div>
+                <div class="detail-list" style="padding: 16px;">
+            `;
+
+            if (details.length === 0) {
+                html += '<div class="text-muted text-center" style="padding: 20px;">暂无详情记录</div>';
+            } else {
+                details.forEach(d => {
+                    const dTimeStr = d.createTime ? new Date(d.createTime).toLocaleString() : '-';
+                    const isDetailFailed = d.status === 'FAILED';
+                    html += `
+                        <div class="detail-item ${isDetailFailed ? 'detail-item-failed' : ''}">
+                            <div class="detail-time">
+                                ⏱️ ${dTimeStr}
+                                ${isDetailFailed ? '<span class="status-tag status-tag-failed" style="margin-left: 8px;">❌ FAILED</span>' : ''}
+                            </div>
+                            <div class="detail-content">${d.content || '(空)'}</div>
+                        </div>
+                    `;
+                });
+            }
+
+            html += '</div>';
+            panel.innerHTML = html;
+        }
+
+        // ================= MODAL (fallback) =================
+        function showDetails(node, details) {
+            const modal = document.getElementById('detailModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalBody = document.getElementById('modalBody');
+            modalTitle.textContent = `📋 ${node.name || node.code || 'Unknown'} - 详情`;
+
+            if (details.length === 0) {
+                modalBody.innerHTML = '<div class="text-center text-muted" style="padding: 20px;">暂无详情记录</div>';
+            } else {
+                let html = '';
+                details.forEach(d => {
+                    const timeStr = d.createTime ? new Date(d.createTime).toLocaleString() : '-';
+                    const isDetailFailed = d.status === 'FAILED';
+                    html += `
+                        <div class="detail-item ${isDetailFailed ? 'detail-item-failed' : ''}">
+                            <div class="detail-time">
+                                ⏱️ ${timeStr}
+                                ${isDetailFailed ? '<span class="status-tag status-tag-failed" style="margin-left: 8px;">❌ FAILED</span>' : ''}
+                            </div>
+                            <div class="detail-content">${d.content || '(空)'}</div>
+                        </div>
+                    `;
+                });
+                modalBody.innerHTML = html;
+            }
+            modal.classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('detailModal').classList.remove('show');
+        }
+
+        function closeModalOnOverlay(event) {
+            if (event.target === event.currentTarget) closeModal();
+        }
+
+        function shortHash(str) {
+            if (!str) return '-';
+            return str.length > 8 ? str.substring(0, 8) + '...' : str;
+        }
+
+        // ================= HELPER FUNCTIONS =================
+        function renderDurationBadge(costTime, isFlow = false) {
+            if (costTime == null) return '';
+            let cls = 'duration-fast';
+            if (costTime >= 500) cls = 'duration-slow';
+            else if (costTime >= 100) cls = 'duration-medium';
+            if (isFlow) {
+                const flowCls = cls.replace('duration-', 'flow-duration-') || cls;
+                const bgMap = { 'duration-fast': '#27ae60', 'duration-medium': '#f39c12', 'duration-slow': '#e74c3c' };
+                return `<span class="flow-duration-badge" style="background:${bgMap[cls]}">⏱ ${costTime}ms</span>`;
+            }
+            return `<span class="duration-badge ${cls}">⏱ ${costTime}ms</span>`;
+        }
+
+        function renderStatusTag(status) {
+            if (!status) return '';
+            if (status === 'FAILED') return '<span class="status-tag status-tag-failed">❌ 异常</span>';
+            if (status === 'COMPLETED') return '<span class="status-tag status-tag-success">✅ 完成</span>';
+            return `<span class="status-tag status-tag-default">${status}</span>`;
+        }
+
+        function renderInfoSections(log) {
+            let html = '';
+            if (log.inputParams) {
+                html += `
+                <div class="info-section" onclick="event.stopPropagation();">
+                    <div class="info-section-header" onclick="this.nextElementSibling.classList.toggle('show'); this.querySelector('.toggle-icon').classList.toggle('expanded');">
+                        <span class="toggle-icon">▶</span> 📥 入参
+                    </div>
+                    <div class="info-section-body"><pre>${formatJsonSafe(log.inputParams)}</pre></div>
+                </div>`;
+            }
+            if (log.outputParams) {
+                html += `
+                <div class="info-section" onclick="event.stopPropagation();">
+                    <div class="info-section-header" onclick="this.nextElementSibling.classList.toggle('show'); this.querySelector('.toggle-icon').classList.toggle('expanded');">
+                        <span class="toggle-icon">▶</span> 📤 出参
+                    </div>
+                    <div class="info-section-body"><pre>${formatJsonSafe(log.outputParams)}</pre></div>
+                </div>`;
+            }
+            if (log.exception) {
+                html += `
+                <div class="info-section exception-section" onclick="event.stopPropagation();">
+                    <div class="info-section-header" onclick="this.nextElementSibling.classList.toggle('show'); this.querySelector('.toggle-icon').classList.toggle('expanded');">
+                        <span class="toggle-icon expanded">▶</span> ❌ 异常信息
+                    </div>
+                    <div class="info-section-body show"><pre>${escapeHtml(log.exception)}</pre></div>
+                </div>`;
+            }
+            return html;
+        }
+
+        function bindInfoToggle(container) {
+            // Info sections already have inline onclick, no extra binding needed
+        }
+
+        function getNodeStatus(node) {
+            if (node.logs && node.logs.length > 0) {
+                return node.logs[0].status || 'COMPLETED';
+            }
+            return null;
+        }
+
+        function formatJsonSafe(str) {
+            if (!str) return '';
+            try {
+                const obj = typeof str === 'string' ? JSON.parse(str) : str;
+                return escapeHtml(JSON.stringify(obj, null, 2));
+            } catch (e) {
+                return escapeHtml(str);
+            }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        document.getElementById('layoutType').addEventListener('change', () => {
+            if (currentData) renderData();
+        });
+    </script>
+</body>
+
+</html>

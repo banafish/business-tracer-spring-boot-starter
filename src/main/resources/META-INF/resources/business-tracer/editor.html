@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>可视化编辑器 - Business Tracer</title>
+    <link rel="stylesheet" href="common.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/drawflow@0.0.59/dist/drawflow.min.css">
+    <style>
+        /* Editor-specific layout - override app-layout for full-height editor */
+        body {
+            background: #f0f2f5;
+        }
+
+        .app-layout {
+            min-height: 100vh;
+        }
+
+        .main-content {
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* Editor Toolbar */
+        .editor-toolbar {
+            background: white;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            flex-wrap: wrap;
+            z-index: 10;
+        }
+
+        .editor-title {
+            font-size: 1.2em;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-right: 16px;
+        }
+
+        .editor-toolbar .toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .editor-toolbar label {
+            font-weight: 600;
+            color: var(--gray-700);
+            font-size: 0.9em;
+        }
+
+        .editor-toolbar input,
+        .editor-toolbar select {
+            padding: 8px 12px;
+            border: 2px solid var(--gray-300);
+            border-radius: 6px;
+            font-size: 14px;
+            min-width: 150px;
+        }
+
+        .editor-toolbar input:focus,
+        .editor-toolbar select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .editor-toolbar input:disabled {
+            background: var(--gray-200);
+        }
+
+        .toolbar-actions {
+            margin-left: auto;
+            display: flex;
+            gap: 10px;
+        }
+
+        /* Editor Main Area */
+        .editor-container {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* Node Palette */
+        .node-palette {
+            width: 260px;
+            background: white;
+            padding: 16px;
+            overflow-y: auto;
+            box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
+            flex-shrink: 0;
+        }
+
+        .palette-title {
+            font-size: 1em;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--gray-200);
+        }
+
+        .palette-search {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid var(--gray-300);
+            border-radius: 8px;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+
+        .palette-search:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .node-item {
+            background: white;
+            border: 2px solid var(--gray-300);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+            cursor: grab;
+            transition: all 0.2s;
+        }
+
+        .node-item:hover {
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .node-item:active {
+            cursor: grabbing;
+        }
+
+        .node-item-code {
+            font-size: 0.7em;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 4px;
+        }
+
+        .node-item-name {
+            font-weight: 600;
+            color: var(--gray-900);
+            font-size: 0.9em;
+        }
+
+        .empty-nodes {
+            text-align: center;
+            color: var(--gray-500);
+            padding: 20px;
+            font-size: 0.9em;
+        }
+
+        /* Canvas Area */
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #drawflow {
+            width: 100%;
+            height: 100%;
+            background: #f8f9fa;
+            background-image: radial-gradient(circle, #ddd 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        /* Drawflow Node Styling */
+        .drawflow .drawflow-node {
+            background: white;
+            border: 2px solid var(--gray-300);
+            border-radius: 10px;
+            min-width: 180px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .drawflow .drawflow-node.selected {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.3);
+        }
+
+        .drawflow .drawflow-node .drawflow_content_node {
+            padding: 0;
+        }
+
+        .drawflow .drawflow-node .inputs,
+        .drawflow .drawflow-node .outputs {
+            position: relative;
+        }
+
+        .drawflow .drawflow-node .input,
+        .drawflow .drawflow-node .output {
+            width: 14px;
+            height: 14px;
+            background: var(--primary);
+            border: 2px solid white;
+        }
+
+        .drawflow .connection .main-path {
+            stroke: var(--primary);
+            stroke-width: 3px;
+        }
+
+        /* Custom Node Content */
+        .node-content {
+            padding: 12px;
+        }
+
+        .node-content .node-code {
+            font-size: 0.7em;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 6px;
+        }
+
+        .node-content .node-name {
+            font-weight: 600;
+            font-size: 0.9em;
+            color: var(--gray-900);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 1199px) {
+            .node-palette {
+                width: 200px;
+            }
+        }
+
+        @media (max-width: 767px) {
+            .editor-container {
+                flex-direction: column;
+            }
+
+            .node-palette {
+                width: 100%;
+                height: 150px;
+                flex-shrink: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-layout">
+        <!-- Sidebar injected by sidebar.js -->
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Editor Toolbar -->
+            <div class="editor-toolbar">
+                <span class="editor-title">🎨 可视化编辑器</span>
+
+                <div class="toolbar-group">
+                    <label>Flow Code:</label>
+                    <input type="text" id="flowCode" placeholder="e.g., ORDER_FLOW">
+                </div>
+
+                <div class="toolbar-group">
+                    <label>名称:</label>
+                    <input type="text" id="flowName" placeholder="e.g., 订单流程">
+                </div>
+
+                <div class="toolbar-group">
+                    <label>布局:</label>
+                    <select id="layout">
+                        <option value="tree">Tree</option>
+                        <option value="timeline">Timeline</option>
+                        <option value="flow">Flow</option>
+                    </select>
+                </div>
+
+                <div class="toolbar-actions">
+                    <button class="btn btn-danger" onclick="clearCanvas()">清空</button>
+                    <button class="btn btn-success" onclick="saveDsl()">💾 保存</button>
+                </div>
+            </div>
+
+            <!-- Editor Main Area -->
+            <div class="editor-container">
+                <!-- Node Palette -->
+                <div class="node-palette">
+                    <div class="palette-title">📦 节点面板</div>
+                    <input type="text" class="palette-search" id="nodeSearch" placeholder="搜索节点...">
+                    <div id="nodeList">
+                        <div class="empty-nodes">加载中...</div>
+                    </div>
+                </div>
+
+                <!-- Canvas -->
+                <div class="canvas-container">
+                    <div id="drawflow"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/drawflow@0.0.59/dist/drawflow.min.js"></script>
+    <script src="sidebar.js"></script>
+    <script>
+        // State
+        let editor = null;
+        let allNodes = [];
+        let isEditMode = false;
+        let editFlowCode = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initDrawflow();
+            loadNodeList();
+            checkEditMode();
+            setupSearch();
+        });
+
+        // Initialize Drawflow
+        function initDrawflow() {
+            const container = document.getElementById('drawflow');
+            editor = new Drawflow(container);
+            editor.reroute = true;
+            editor.reroute_fix_curvature = true;
+            editor.force_first_input = false;
+            editor.start();
+
+            // Drop handler
+            container.addEventListener('drop', handleDrop);
+            container.addEventListener('dragover', (e) => e.preventDefault());
+        }
+
+        // Load node list from API
+        async function loadNodeList() {
+            try {
+                const res = await fetch('/business-tracer/api/node-codes');
+                const data = await res.json();
+                if (data.code === 200) {
+                    allNodes = data.data || [];
+                    renderNodeList(allNodes);
+                } else {
+                    showToast('加载节点失败', 'error');
+                }
+            } catch (e) {
+                showToast('错误: ' + e.message, 'error');
+            }
+        }
+
+        // Render node list
+        function renderNodeList(nodes) {
+            const container = document.getElementById('nodeList');
+            if (nodes.length === 0) {
+                container.innerHTML = '<div class="empty-nodes">暂无节点<br><small>请先添加 @BusinessTrace 注解</small></div>';
+                return;
+            }
+
+            container.innerHTML = nodes.map(node => `
+                <div class="node-item" draggable="true" 
+                     ondragstart="dragNode(event, '${node.code}', '${node.name || node.code}')">
+                    <div class="node-item-code">${node.code}</div>
+                    <div class="node-item-name">${node.name || node.code}</div>
+                </div>
+            `).join('');
+        }
+
+        // Search functionality
+        function setupSearch() {
+            document.getElementById('nodeSearch').addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase();
+                const filtered = allNodes.filter(n =>
+                    n.code.toLowerCase().includes(query) ||
+                    (n.name && n.name.toLowerCase().includes(query))
+                );
+                renderNodeList(filtered);
+            });
+        }
+
+        // Drag start
+        function dragNode(event, code, name) {
+            event.dataTransfer.setData('nodeCode', code);
+            event.dataTransfer.setData('nodeName', name);
+        }
+
+        // Drop handler
+        function handleDrop(event) {
+            event.preventDefault();
+            const code = event.dataTransfer.getData('nodeCode');
+            const name = event.dataTransfer.getData('nodeName');
+
+            if (!code) return;
+
+            const rect = document.getElementById('drawflow').getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+
+            addNodeToCanvas(code, name, x, y);
+        }
+
+        // Add node to canvas
+        function addNodeToCanvas(code, name, posX, posY, isEndNode = false) {
+            const html = `
+                <div class="node-content">
+                    <div class="node-code">${code}</div>
+                    <div class="node-name">${name}</div>
+                    <div style="margin-top: 8px;">
+                        <label style="font-size: 0.8em; cursor: pointer;" title="标记为结束节点">
+                            <input type="checkbox" df-isEndNode ${isEndNode ? 'checked' : ''}> 结束节点
+                        </label>
+                    </div>
+                </div>
+            `;
+
+            const zoomLevel = editor.zoom;
+            const adjustedX = (posX - editor.precanvas.getBoundingClientRect().left) / zoomLevel;
+            const adjustedY = (posY - editor.precanvas.getBoundingClientRect().top) / zoomLevel;
+
+            editor.addNode(
+                code,
+                1, 1,
+                adjustedX, adjustedY,
+                code,
+                { code: code, name: name, isEndNode: isEndNode },
+                html
+            );
+        }
+
+        // Check if edit mode
+        function checkEditMode() {
+            const params = new URLSearchParams(window.location.search);
+            editFlowCode = params.get('flowCode');
+
+            if (editFlowCode) {
+                isEditMode = true;
+                document.getElementById('flowCode').value = editFlowCode;
+                document.getElementById('flowCode').disabled = true;
+                loadExistingDsl(editFlowCode);
+            }
+        }
+
+        // Load existing DSL for editing
+        async function loadExistingDsl(flowCode) {
+            try {
+                const res = await fetch(`/business-tracer/api/dsl/${flowCode}`);
+                const data = await res.json();
+
+                if (data.code === 200 && data.data) {
+                    const dsl = data.data;
+                    document.getElementById('flowName').value = dsl.name || '';
+                    document.getElementById('layout').value = dsl.layout || 'tree';
+
+                    const drawflowData = dsl.rawNodesJson || dsl.drawflowData;
+                    if (drawflowData && typeof drawflowData === 'object') {
+                        editor.import(drawflowData);
+                        // Ensure checkboxes match data state
+                        setTimeout(() => {
+                            const nodes = document.querySelectorAll('.drawflow-node');
+                            nodes.forEach(nodeel => {
+                                const nodeId = nodeel.id.split('-')[1];
+                                const nodeData = editor.getNodeFromId(nodeId);
+                                if (nodeData && nodeData.data && (nodeData.data.isEndNode === true || nodeData.data.isEndNode === 'true')) {
+                                    const checkbox = nodeel.querySelector('input[type="checkbox"][df-isEndNode]');
+                                    if (checkbox) checkbox.checked = true;
+                                }
+                            });
+                        }, 100);
+                    } else if (dsl.nodes && Array.isArray(dsl.nodes)) {
+                        rebuildFromTree(dsl.nodes);
+                    }
+                } else {
+                    showToast('DSL 未找到', 'error');
+                }
+            } catch (e) {
+                showToast('加载错误: ' + e.message, 'error');
+            }
+        }
+
+        // Rebuild canvas from legacy tree structure
+        function rebuildFromTree(nodes, parentId = null, startX = 200, startY = 50, level = 0) {
+            const spacing = 200;
+            let currentY = startY;
+
+            nodes.forEach((node, index) => {
+                const posX = startX + level * spacing;
+                const posY = currentY + index * 120;
+
+                const name = node.name || node.code;
+                const isEndNode = node.isEndNode || false;
+                const html = `
+                    <div class="node-content">
+                        <div class="node-code">${node.code}</div>
+                        <div class="node-name">${name}</div>
+                        <div style="margin-top: 8px;">
+                            <label style="font-size: 0.8em; cursor: pointer;" title="标记为结束节点">
+                                <input type="checkbox" df-isEndNode ${isEndNode ? 'checked' : ''}> 结束节点
+                            </label>
+                        </div>
+                    </div>
+                `;
+
+                const newNodeId = editor.addNode(
+                    node.code,
+                    1, 1,
+                    posX, posY,
+                    node.code,
+                    { code: node.code, name: name, isEndNode: isEndNode },
+                    html
+                );
+
+                if (parentId !== null) {
+                    try {
+                        editor.addConnection(parentId, newNodeId, 'output_1', 'input_1');
+                    } catch (e) {
+                        console.log('Connection failed:', e);
+                    }
+                }
+
+                if (node.children && node.children.length > 0) {
+                    rebuildFromTree(node.children, newNodeId, startX, posY, level + 1);
+                }
+            });
+        }
+
+        // Clear canvas
+        function clearCanvas() {
+            if (confirm('确定要清空画布吗？')) {
+                editor.clear();
+            }
+        }
+
+        // Save DSL
+        async function saveDsl() {
+            const flowCode = document.getElementById('flowCode').value.trim();
+            const name = document.getElementById('flowName').value.trim();
+            const layout = document.getElementById('layout').value;
+
+            if (!flowCode) {
+                showToast('Flow Code 不能为空', 'error');
+                return;
+            }
+            if (!name) {
+                showToast('名称不能为空', 'error');
+                return;
+            }
+
+            // Sync checkbox state with drawflow nodes before export
+            const uiNodes = document.querySelectorAll('.drawflow-node');
+            uiNodes.forEach(node => {
+                const nodeId = node.id.split('-')[1];
+                const checkbox = node.querySelector('input[type="checkbox"][df-isEndNode]');
+                if (checkbox && editor.drawflow.drawflow.Home.data[nodeId]) {
+                    editor.drawflow.drawflow.Home.data[nodeId].data.isEndNode = checkbox.checked;
+                }
+            });
+
+            const drawflowData = editor.export();
+
+            const payload = {
+                flowCode: flowCode,
+                name: name,
+                layout: layout,
+                rawNodesJson: drawflowData,
+                nodes: null
+            };
+
+            try {
+                let res;
+                if (isEditMode) {
+                    res = await fetch(`/business-tracer/api/dsl/${flowCode}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                } else {
+                    res = await fetch('/business-tracer/api/dsl', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                }
+
+                const data = await res.json();
+                if (data.code === 200) {
+                    showToast('保存成功!', 'success');
+                    if (!isEditMode) {
+                        window.location.href = `editor.html?flowCode=${flowCode}`;
+                    }
+                } else {
+                    showToast(data.message || '保存失败', 'error');
+                }
+            } catch (e) {
+                showToast('错误: ' + e.message, 'error');
+            }
+        }
+    </script>
+</body>
+
+</html>
