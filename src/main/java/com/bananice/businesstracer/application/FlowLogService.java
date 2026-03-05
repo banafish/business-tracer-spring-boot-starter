@@ -1,20 +1,19 @@
 package com.bananice.businesstracer.application;
 
+import com.bananice.businesstracer.application.dto.PageResult;
 import com.bananice.businesstracer.domain.model.DslConfig;
 import com.bananice.businesstracer.domain.model.DslNode;
 import com.bananice.businesstracer.domain.model.FlowLog;
 import com.bananice.businesstracer.domain.model.NodeLog;
+import com.bananice.businesstracer.domain.model.TraceStatus;
 import com.bananice.businesstracer.domain.repository.FlowLogRepository;
 import com.bananice.businesstracer.domain.repository.NodeLogRepository;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.Resource;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -22,16 +21,12 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class FlowLogService {
 
-    @Resource
-    private FlowLogRepository flowLogRepository;
-
-    @Resource
-    private NodeLogRepository nodeLogRepository;
-
-    @Resource
-    private DslService dslService;
+    private final FlowLogRepository flowLogRepository;
+    private final NodeLogRepository nodeLogRepository;
+    private final DslService dslService;
 
     /**
      * Record flow logs for all DSLs that contain the given node code.
@@ -76,7 +71,7 @@ public class FlowLogService {
                     .flowCode(flowCode)
                     .name(name)
                     .businessId(businessId)
-                    .status("IN_PROGRESS")
+                    .status(TraceStatus.IN_PROGRESS.getValue())
                     .createTime(LocalDateTime.now())
                     .build();
 
@@ -92,28 +87,10 @@ public class FlowLogService {
     /**
      * Query flow logs with pagination
      */
-    public Map<String, Object> queryFlowLogs(String flowCode, String businessId, int pageNum, int pageSize) {
+    public PageResult<FlowLog> queryFlowLogs(String flowCode, String businessId, int pageNum, int pageSize) {
         List<FlowLog> logs = flowLogRepository.findAll(flowCode, businessId, pageNum, pageSize);
         long total = flowLogRepository.count(flowCode, businessId);
-
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("total", total);
-        result.put("pageNum", pageNum);
-        result.put("pageSize", pageSize);
-        result.put("list", logs.stream().map(this::toMap).collect(Collectors.toList()));
-
-        return result;
-    }
-
-    private Map<String, Object> toMap(FlowLog log) {
-        Map<String, Object> map = new LinkedHashMap<>();
-        map.put("id", log.getId());
-        map.put("flowCode", log.getFlowCode());
-        map.put("name", log.getName());
-        map.put("businessId", log.getBusinessId());
-        map.put("status", log.getStatus());
-        map.put("createTime", log.getCreateTime() != null ? log.getCreateTime().toString() : null);
-        return map;
+        return PageResult.of(total, pageNum, pageSize, logs);
     }
 
     /**
@@ -121,7 +98,7 @@ public class FlowLogService {
      */
     public void checkAndUpdateFlowStatus(String businessId, String flowCode) {
         List<FlowLog> logs = flowLogRepository.findAll(flowCode, businessId, 1, 1);
-        if (logs.isEmpty() || "FAILED".equals(logs.get(0).getStatus())) {
+        if (logs.isEmpty() || TraceStatus.FAILED.getValue().equals(logs.get(0).getStatus())) {
             return;
         }
 
@@ -132,7 +109,7 @@ public class FlowLogService {
         if (dsl == null || dsl.getNodes() == null || dsl.getNodes().isEmpty())
             return;
 
-        List<String> endNodeCodes = findEndNodeCodes(dsl.getNodes());
+        List<String> endNodeCodes = DslNode.findAllEndNodeCodes(dsl.getNodes());
         if (endNodeCodes.isEmpty())
             return; // No end nodes defined
 
@@ -146,7 +123,7 @@ public class FlowLogService {
 
         if (allEndNodesExecuted) {
             // Update flow status to COMPLETED
-            flowLogRepository.updateStatus(flowCode, businessId, "COMPLETED");
+            flowLogRepository.updateStatus(flowCode, businessId, TraceStatus.COMPLETED.getValue());
         }
     }
 
@@ -163,28 +140,12 @@ public class FlowLogService {
         }
     }
 
-    private List<String> findEndNodeCodes(List<DslNode> nodes) {
-        List<String> endNodes = new ArrayList<>();
-        if (nodes == null)
-            return endNodes;
-
-        for (DslNode node : nodes) {
-            if (Boolean.TRUE.equals(node.getIsEndNode())) {
-                endNodes.add(node.getCode());
-            }
-            if (node.getChildren() != null) {
-                endNodes.addAll(findEndNodeCodes(node.getChildren()));
-            }
-        }
-        return endNodes;
-    }
-
     /**
      * Mark all flows associated with this businessId as FAILED
      */
     public void markFlowsAsFailed(String businessId) {
         if (businessId == null)
             return;
-        flowLogRepository.updateStatusByBusinessId(businessId, "FAILED");
+        flowLogRepository.updateStatusByBusinessId(businessId, TraceStatus.FAILED.getValue());
     }
 }

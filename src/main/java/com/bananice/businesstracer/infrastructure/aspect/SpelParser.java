@@ -1,6 +1,7 @@
 package com.bananice.businesstracer.infrastructure.aspect;
 
 import org.springframework.core.DefaultParameterNameDiscoverer;
+import org.springframework.core.ParameterNameDiscoverer;
 import org.springframework.expression.Expression;
 import org.springframework.expression.ExpressionParser;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
@@ -20,32 +21,17 @@ public class SpelParser {
     private final ExpressionParser parser = new SpelExpressionParser();
     private final Map<String, Expression> cache = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ParameterNameDiscoverer parameterNameDiscoverer = new DefaultParameterNameDiscoverer();
 
     public String parse(String spel, Method method, Object[] args) {
-        if (spel == null || spel.isEmpty()) {
-            return null;
-        }
-
-        // Simple caching strategy
-        String cacheKey = method.toString() + ":" + spel;
-        Expression expression = cache.computeIfAbsent(cacheKey, k -> parser.parseExpression(spel));
-
-        StandardEvaluationContext context = new StandardEvaluationContext();
-        String[] params = discoverParameterNames(method);
-
-        if (params != null) {
-            for (int i = 0; i < params.length; i++) {
-                if (i < args.length) {
-                    context.setVariable(params[i], args[i]);
-                }
-            }
-        }
-
-        Object value = expression.getValue(context);
-        return convertToString(value);
+        return doParse(spel, method, args, null, false);
     }
 
     public String parse(String spel, Method method, Object[] args, Object result) {
+        return doParse(spel, method, args, result, true);
+    }
+
+    private String doParse(String spel, Method method, Object[] args, Object result, boolean hasResult) {
         if (spel == null || spel.isEmpty()) {
             return null;
         }
@@ -54,7 +40,7 @@ public class SpelParser {
         Expression expression = cache.computeIfAbsent(cacheKey, k -> parser.parseExpression(spel));
 
         StandardEvaluationContext context = new StandardEvaluationContext();
-        String[] params = discoverParameterNames(method);
+        String[] params = parameterNameDiscoverer.getParameterNames(method);
 
         if (params != null) {
             for (int i = 0; i < params.length; i++) {
@@ -64,7 +50,9 @@ public class SpelParser {
             }
         }
 
-        context.setVariable("result", result);
+        if (hasResult) {
+            context.setVariable("result", result);
+        }
 
         Object value = expression.getValue(context);
         return convertToString(value);
@@ -85,18 +73,5 @@ public class SpelParser {
             }
         }
         return value.toString();
-    }
-
-    // Basic parameter name discovery (In Spring, usually ParameterNameDiscoverer is
-    // better,
-    // but for simplicity/universality here we use a basic approach or assume
-    // compilation with -parameters)
-    private String[] discoverParameterNames(Method method) {
-        // NOTE: Reliable parameter name discovery requires Spring's
-        // DefaultParameterNameDiscoverer
-        // or compilation with '-parameters'.
-        // For this starter, let's assume we can use Spring's utilities if we want to be
-        // robust.
-        return new DefaultParameterNameDiscoverer().getParameterNames(method);
     }
 }

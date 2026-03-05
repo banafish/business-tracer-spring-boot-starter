@@ -1,6 +1,7 @@
 package com.bananice.businesstracer.infrastructure.registry;
 
 import com.bananice.businesstracer.api.BusinessTrace;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
 import org.springframework.aop.framework.AopProxyUtils;
@@ -11,18 +12,16 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
 
-import javax.annotation.Resource;
-
 /**
  * Scans all Spring beans for @BusinessTrace annotations and registers them.
  * This runs during application startup.
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class BusinessTraceScanner implements BeanPostProcessor {
 
-    @Resource
-    private BusinessTraceRegistry registry;
+    private final BusinessTraceRegistry registry;
 
     @Override
     public Object postProcessAfterInitialization(@NonNull Object bean, @NonNull String beanName) throws BeansException {

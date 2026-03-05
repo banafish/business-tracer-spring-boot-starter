@@ -1,6 +1,7 @@
 package com.bananice.businesstracer.api;
 
 import com.bananice.businesstracer.domain.model.DetailLog;
+import com.bananice.businesstracer.domain.model.TraceStatus;
 import com.bananice.businesstracer.domain.repository.DetailLogRepository;
 import com.bananice.businesstracer.infrastructure.context.TraceContext;
 import com.bananice.businesstracer.infrastructure.context.TraceContextHolder;
@@ -14,16 +15,18 @@ import java.time.LocalDateTime;
 @Component
 public class BusinessTracer {
 
-    private static DetailLogRepository repository;
+    private static BusinessTracer instance;
 
-    // Static injection
-    public BusinessTracer(DetailLogRepository repo) {
-        BusinessTracer.repository = repo;
+    private final DetailLogRepository repository;
+
+    public BusinessTracer(DetailLogRepository repository) {
+        this.repository = repository;
+        BusinessTracer.instance = this;
     }
 
     /**
      * Record a detail log for the current business flow.
-     * 
+     *
      * @param content Detail content
      */
     public static void record(String content) {
@@ -36,12 +39,12 @@ public class BusinessTracer {
                 .businessId(context.getBusinessId())
                 .parentNodeId(context.getNodeId())
                 .content(content)
-                .status("NORMAL")
+                .status(TraceStatus.NORMAL.getValue())
                 .createTime(LocalDateTime.now())
                 .build();
 
-        if (repository != null) {
-            repository.save(log);
+        if (instance != null) {
+            instance.repository.save(log);
         }
     }
 
@@ -64,12 +67,12 @@ public class BusinessTracer {
                 .businessId(context.getBusinessId())
                 .parentNodeId(context.getNodeId())
                 .content(content)
-                .status("FAILED")
+                .status(TraceStatus.FAILED.getValue())
                 .createTime(LocalDateTime.now())
                 .build();
 
-        if (repository != null) {
-            repository.save(log);
+        if (instance != null) {
+            instance.repository.save(log);
         }
 
         // Set flag so the aspect knows to mark node and flows as FAILED

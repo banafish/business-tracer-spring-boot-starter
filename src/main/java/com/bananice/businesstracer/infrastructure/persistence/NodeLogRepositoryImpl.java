@@ -5,18 +5,18 @@ import com.bananice.businesstracer.domain.model.NodeLog;
 import com.bananice.businesstracer.domain.repository.NodeLogRepository;
 import com.bananice.businesstracer.infrastructure.persistence.mapper.NodeLogMapper;
 import com.bananice.businesstracer.infrastructure.persistence.po.NodeLogPO;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Repository;
 
-import javax.annotation.Resource;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Repository
+@RequiredArgsConstructor
 public class NodeLogRepositoryImpl implements NodeLogRepository {
 
-    @Resource
-    private NodeLogMapper nodeLogMapper;
+    private final NodeLogMapper nodeLogMapper;
 
     @Override
     public void save(NodeLog nodeLog) {

@@ -5,18 +5,18 @@ import com.bananice.businesstracer.domain.model.DetailLog;
 import com.bananice.businesstracer.domain.repository.DetailLogRepository;
 import com.bananice.businesstracer.infrastructure.persistence.mapper.DetailLogMapper;
 import com.bananice.businesstracer.infrastructure.persistence.po.DetailLogPO;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Repository;
 
-import javax.annotation.Resource;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Repository
+@RequiredArgsConstructor
 public class DetailLogRepositoryImpl implements DetailLogRepository {
 
-    @Resource
-    private DetailLogMapper detailLogMapper;
+    private final DetailLogMapper detailLogMapper;
 
     @Override
     public void save(DetailLog detailLog) {

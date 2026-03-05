@@ -9,21 +9,24 @@ import com.bananice.businesstracer.infrastructure.persistence.po.FlowDslPO;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
-import javax.annotation.Resource;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
  * Repository implementation for DSL configuration
  */
 @Repository
+@RequiredArgsConstructor
 public class DslConfigRepositoryImpl implements DslConfigRepository {
 
-    @Resource
-    private FlowDslMapper flowDslMapper;
+    private final FlowDslMapper flowDslMapper;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -65,21 +68,7 @@ public class DslConfigRepositoryImpl implements DslConfigRepository {
 
         existingPO.setName(dslConfig.getName());
         existingPO.setLayout(dslConfig.getLayout());
-
-        // Use rawNodesJson if available (Drawflow format), otherwise serialize nodes
-        if (dslConfig.getRawNodesJson() != null) {
-            try {
-                if (dslConfig.getRawNodesJson() instanceof String) {
-                    existingPO.setNodesJson((String) dslConfig.getRawNodesJson());
-                } else {
-                    existingPO.setNodesJson(objectMapper.writeValueAsString(dslConfig.getRawNodesJson()));
-                }
-            } catch (JsonProcessingException e) {
-                throw new RuntimeException("Failed to serialize rawNodesJson", e);
-            }
-        } else {
-            existingPO.setNodesJson(nodesToJson(dslConfig.getNodes()));
-        }
+        existingPO.setNodesJson(serializeNodesJson(dslConfig));
 
         flowDslMapper.updateById(existingPO);
         return toDomain(existingPO);
@@ -132,15 +121,12 @@ public class DslConfigRepositoryImpl implements DslConfigRepository {
         try {
             // Check if it's Drawflow format (contains "drawflow" key)
             if (json.trim().startsWith("{") && json.contains("\"drawflow\"")) {
-                // Drawflow format - extract nodes from drawflow structure
                 return extractNodesFromDrawflow(json);
             } else {
-                // Legacy format - direct array of nodes
                 return objectMapper.readValue(json, new TypeReference<List<DslNode>>() {
                 });
             }
         } catch (JsonProcessingException e) {
-            // Failed to parse, return empty list
             return Collections.emptyList();
         }
     }
@@ -151,35 +137,35 @@ public class DslConfigRepositoryImpl implements DslConfigRepository {
     @SuppressWarnings("unchecked")
     private List<DslNode> extractNodesFromDrawflow(String json) {
         try {
-            java.util.Map<String, Object> drawflowData = objectMapper.readValue(json,
-                    new TypeReference<java.util.Map<String, Object>>() {
+            Map<String, Object> drawflowData = objectMapper.readValue(json,
+                    new TypeReference<Map<String, Object>>() {
                     });
 
-            java.util.Map<String, Object> drawflow = (java.util.Map<String, Object>) drawflowData.get("drawflow");
+            Map<String, Object> drawflow = (Map<String, Object>) drawflowData.get("drawflow");
             if (drawflow == null)
                 return Collections.emptyList();
 
-            java.util.Map<String, Object> home = (java.util.Map<String, Object>) drawflow.get("Home");
+            Map<String, Object> home = (Map<String, Object>) drawflow.get("Home");
             if (home == null)
                 return Collections.emptyList();
 
-            java.util.Map<String, Object> data = (java.util.Map<String, Object>) home.get("data");
+            Map<String, Object> data = (Map<String, Object>) home.get("data");
             if (data == null)
                 return Collections.emptyList();
 
             // Build nodes from Drawflow data
-            List<DslNode> nodes = new java.util.ArrayList<>();
-            java.util.Map<String, String> nodeParentMap = new java.util.HashMap<>(); // nodeId -> parentNodeId
+            List<DslNode> nodes = new ArrayList<>();
+            Map<String, String> nodeParentMap = new HashMap<>(); // nodeId -> parentNodeId
 
             // First pass: collect all nodes and their connections
-            for (java.util.Map.Entry<String, Object> entry : data.entrySet()) {
-                java.util.Map<String, Object> nodeData = (java.util.Map<String, Object>) entry.getValue();
-                java.util.Map<String, Object> inputs = (java.util.Map<String, Object>) nodeData.get("inputs");
+            for (Map.Entry<String, Object> entry : data.entrySet()) {
+                Map<String, Object> nodeData = (Map<String, Object>) entry.getValue();
+                Map<String, Object> inputs = (Map<String, Object>) nodeData.get("inputs");
 
                 if (inputs != null) {
                     for (Object inputObj : inputs.values()) {
-                        java.util.Map<String, Object> input = (java.util.Map<String, Object>) inputObj;
-                        java.util.List<java.util.Map<String, Object>> connections = (java.util.List<java.util.Map<String, Object>>) input
+                        Map<String, Object> input = (Map<String, Object>) inputObj;
+                        List<Map<String, Object>> connections = (List<Map<String, Object>>) input
                                 .get("connections");
                         if (connections != null && !connections.isEmpty()) {
                             String parentId = String.valueOf(connections.get(0).get("node"));
@@ -190,7 +176,7 @@ public class DslConfigRepositoryImpl implements DslConfigRepository {
             }
 
             // Find root nodes (nodes without parents)
-            for (java.util.Map.Entry<String, Object> entry : data.entrySet()) {
+            for (Map.Entry<String, Object> entry : data.entrySet()) {
                 if (!nodeParentMap.containsKey(entry.getKey())) {
                     DslNode node = buildDslNodeFromDrawflow(entry.getKey(), data, nodeParentMap);
                     if (node != null) {
@@ -206,13 +192,13 @@ public class DslConfigRepositoryImpl implements DslConfigRepository {
     }
 
     @SuppressWarnings("unchecked")
-    private DslNode buildDslNodeFromDrawflow(String nodeId, java.util.Map<String, Object> data,
-            java.util.Map<String, String> nodeParentMap) {
-        java.util.Map<String, Object> nodeData = (java.util.Map<String, Object>) data.get(nodeId);
+    private DslNode buildDslNodeFromDrawflow(String nodeId, Map<String, Object> data,
+            Map<String, String> nodeParentMap) {
+        Map<String, Object> nodeData = (Map<String, Object>) data.get(nodeId);
         if (nodeData == null)
             return null;
 
-        java.util.Map<String, Object> nodeInfo = (java.util.Map<String, Object>) nodeData.get("data");
+        Map<String, Object> nodeInfo = (Map<String, Object>) nodeData.get("data");
         String code = nodeInfo != null ? (String) nodeInfo.get("code") : (String) nodeData.get("name");
 
         DslNode node = new DslNode();
@@ -224,8 +210,8 @@ public class DslConfigRepositoryImpl implements DslConfigRepository {
         }
 
         // Find children
-        List<DslNode> children = new java.util.ArrayList<>();
-        for (java.util.Map.Entry<String, String> entry : nodeParentMap.entrySet()) {
+        List<DslNode> children = new ArrayList<>();
+        for (Map.Entry<String, String> entry : nodeParentMap.entrySet()) {
             if (nodeId.equals(entry.getValue())) {
                 DslNode child = buildDslNodeFromDrawflow(entry.getKey(), data, nodeParentMap);
                 if (child != null) {
@@ -242,6 +228,24 @@ public class DslConfigRepositoryImpl implements DslConfigRepository {
     }
 
     /**
+     * Serialize rawNodesJson or nodes to JSON string
+     */
+    private String serializeNodesJson(DslConfig config) {
+        if (config.getRawNodesJson() != null) {
+            try {
+                if (config.getRawNodesJson() instanceof String) {
+                    return (String) config.getRawNodesJson();
+                } else {
+                    return objectMapper.writeValueAsString(config.getRawNodesJson());
+                }
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException("Failed to serialize rawNodesJson", e);
+            }
+        }
+        return nodesToJson(config.getNodes());
+    }
+
+    /**
      * Convert Domain Model to PO
      */
     private FlowDslPO toPO(DslConfig config) {
@@ -250,21 +254,7 @@ public class DslConfigRepositoryImpl implements DslConfigRepository {
         po.setFlowCode(config.getFlowCode());
         po.setName(config.getName());
         po.setLayout(config.getLayout());
-        // Use rawNodesJson if available (Drawflow format), otherwise serialize nodes
-        // Use rawNodesJson if available (Drawflow format), otherwise serialize nodes
-        if (config.getRawNodesJson() != null) {
-            try {
-                if (config.getRawNodesJson() instanceof String) {
-                    po.setNodesJson((String) config.getRawNodesJson());
-                } else {
-                    po.setNodesJson(objectMapper.writeValueAsString(config.getRawNodesJson()));
-                }
-            } catch (JsonProcessingException e) {
-                throw new RuntimeException("Failed to serialize rawNodesJson", e);
-            }
-        } else {
-            po.setNodesJson(nodesToJson(config.getNodes()));
-        }
+        po.setNodesJson(serializeNodesJson(config));
         return po;
     }
 

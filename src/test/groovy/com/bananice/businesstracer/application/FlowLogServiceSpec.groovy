@@ -19,13 +19,7 @@ class FlowLogServiceSpec extends Specification {
     DslService dslService = Mock()
 
     @Subject
-    FlowLogService flowLogService = new FlowLogService()
-
-    def setup() {
-        flowLogService.@flowLogRepository = flowLogRepository
-        flowLogService.@nodeLogRepository = nodeLogRepository
-        flowLogService.@dslService = dslService
-    }
+    FlowLogService flowLogService = new FlowLogService(flowLogRepository, nodeLogRepository, dslService)
 
     // ==================== Helper ====================
 
@@ -145,7 +139,7 @@ class FlowLogServiceSpec extends Specification {
         result.total == 1L
         result.pageNum == 1
         result.pageSize == 10
-        (result.list as List).size() == 1
+        result.list.size() == 1
     }
 
     def "queryFlowLogs无数据时返回空列表"() {
@@ -158,7 +152,7 @@ class FlowLogServiceSpec extends Specification {
 
         then:
         result.total == 0L
-        (result.list as List).isEmpty()
+        result.list.isEmpty()
     }
 
     // ==================== markFlowsAsFailed ====================

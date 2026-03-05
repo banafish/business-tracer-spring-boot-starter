@@ -1,5 +1,6 @@
 package com.bananice.businesstracer.application
 
+import com.bananice.businesstracer.application.dto.DslRenderNode
 import com.bananice.businesstracer.domain.model.DslConfig
 import com.bananice.businesstracer.domain.model.DslNode
 import com.bananice.businesstracer.domain.model.NodeLog
@@ -15,12 +16,7 @@ class DslServiceSpec extends Specification {
     DslConfigRepository dslConfigRepository = Mock()
 
     @Subject
-    DslService dslService = new DslService()
-
-    def setup() {
-        // 手动注入Mock
-        dslService.@dslConfigRepository = dslConfigRepository
-    }
+    DslService dslService = new DslService(dslConfigRepository)
 
     // ==================== Helper ====================
 
@@ -200,7 +196,7 @@ class DslServiceSpec extends Specification {
         result.flowCode == null
         result.dslName == null
         result.layout == "timeline"
-        (result.nodes as List).size() == 2
+        result.nodes.size() == 2
     }
 
     def "renderByDsl按DSL结构组织日志"() {
@@ -218,9 +214,9 @@ class DslServiceSpec extends Specification {
 
         then:
         result.flowCode == "flow-render"
-        (result.nodes as List).size() == 2
-        ((result.nodes as List)[0] as Map).code == "NODE_A"
-        ((result.nodes as List)[1] as Map).code == "NODE_B"
+        result.nodes.size() == 2
+        result.nodes[0].code == "NODE_A"
+        result.nodes[1].code == "NODE_B"
     }
 
     def "renderByDsl将不在DSL中的日志放入orphans"() {
@@ -234,9 +230,9 @@ class DslServiceSpec extends Specification {
         def result = dslService.renderByDsl(logs, dsl)
 
         then: "UNKNOWN_NODE进入orphans"
-        (result.nodes as List).size() == 1
-        (result.orphans as List).size() == 1
-        ((result.orphans as List)[0] as Map).code == "UNKNOWN_NODE"
+        result.nodes.size() == 1
+        result.orphans.size() == 1
+        result.orphans[0].code == "UNKNOWN_NODE"
     }
 
     @Unroll
@@ -248,9 +244,9 @@ class DslServiceSpec extends Specification {
         def result = dslService.renderByDsl(logs, dsl)
 
         then: "nodes中有节点但logs为空"
-        def node = (result.nodes as List)[0] as Map
+        def node = result.nodes[0]
         node.code == "NODE_NO_LOG"
-        (node.logs as List).isEmpty()
+        node.logs.isEmpty()
 
         where:
         desc     | logs

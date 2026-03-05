@@ -3,9 +3,11 @@ package com.bananice.businesstracer.infrastructure.aspect;
 import com.bananice.businesstracer.api.BusinessTrace;
 import com.bananice.businesstracer.application.FlowLogService;
 import com.bananice.businesstracer.domain.model.NodeLog;
+import com.bananice.businesstracer.domain.model.TraceStatus;
 import com.bananice.businesstracer.domain.repository.NodeLogRepository;
 import com.bananice.businesstracer.infrastructure.context.TraceContext;
 import com.bananice.businesstracer.infrastructure.context.TraceContextHolder;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -15,7 +17,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
-import javax.annotation.Resource;
 import java.lang.reflect.Method;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -23,16 +24,12 @@ import java.util.UUID;
 @Aspect
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class BusinessTraceAspect {
 
-    @Resource
-    private SpelParser spelParser;
-
-    @Resource
-    private NodeLogRepository nodeLogRepository;
-
-    @Resource
-    private FlowLogService flowLogService;
+    private final SpelParser spelParser;
+    private final NodeLogRepository nodeLogRepository;
+    private final FlowLogService flowLogService;
 
     @Value("${spring.application.name:unknown-service}")
     private String appName;
@@ -44,45 +41,17 @@ public class BusinessTraceAspect {
         Method method = signature.getMethod();
         Object[] args = point.getArgs();
 
-        // 1. Resolve Business ID
-        String businessId = null;
-        try {
-            businessId = spelParser.parse(businessTrace.key(), method, args);
-        } catch (Exception e) {
-            log.error("Failed to parse BusinessTrace key SpEL: {}", businessTrace.key(), e);
-        }
+        String businessId = resolveBusinessId(businessTrace, method, args);
+        String inputParamsRaw = resolveInputParams(businessTrace, method, args);
 
-        if (!StringUtils.hasText(businessId)) {
-            // Fallback: If we can't get businessId, effectively we cannot trace
-            // "correctly".
-            // We might just proceed or generate a temp one.
-            // For now, proceed but maybe skip recording if strict.
-            // Let's log warning and proceed without recording or record with 'UNKNOWN'.
-            businessId = "UNKNOWN";
-        }
-
-        String inputParamsRaw = null;
-        try {
-            if (StringUtils.hasText(businessTrace.inputParams())) {
-                inputParamsRaw = spelParser.parse(businessTrace.inputParams(), method, args);
-            }
-        } catch (Exception e) {
-            log.warn("Failed to parse inputParams SpEL: {}", businessTrace.inputParams(), e);
-        }
-
-        // 2. Prepare Context
+        // Prepare Context
         TraceContext parentContext = TraceContextHolder.getContext();
-        String traceId = (parentContext != null && parentContext.getTraceId() != null)
-                ? parentContext.getTraceId()
-                : UUID.randomUUID().toString();
+        String traceId = resolveTraceId(parentContext);
         String nodeId = UUID.randomUUID().toString();
         String parentNodeId = (parentContext != null) ? parentContext.getNodeId() : null;
-
-        // 3. Resolve code and name
         String code = businessTrace.code();
         String name = StringUtils.hasText(businessTrace.name()) ? businessTrace.name() : code;
 
-        // 4. Set New Context
         TraceContext newContext = TraceContext.builder()
                 .businessId(businessId)
                 .code(code)
@@ -97,71 +66,121 @@ public class BusinessTraceAspect {
         Throwable exceptionToThrow = null;
         try {
             result = point.proceed();
-
-            try {
-                if (businessId != null && !"UNKNOWN".equals(businessId) && code != null) {
-                    flowLogService.checkAndUpdateFlowStatusByNodeCode(businessId, code);
-                }
-            } catch (Exception e) {
-                log.error("Failed to check and update flow status", e);
-            }
-
+            checkFlowStatus(businessId, code);
             return result;
         } catch (Throwable t) {
             exceptionToThrow = t;
             throw t;
         } finally {
             long costTime = System.currentTimeMillis() - startTime;
-            boolean hasFailed = exceptionToThrow != null || newContext.isErrorRecorded();
-            String status = hasFailed ? "FAILED" : "COMPLETED";
-            String exceptionMsg = exceptionToThrow != null ? exceptionToThrow.toString() : null;
+            String outputParamsRaw = resolveOutputParams(businessTrace, method, args, result, exceptionToThrow);
+            NodeLog logRecord = buildNodeLog(businessId, code, name, traceId, nodeId, parentNodeId,
+                    businessTrace, method, costTime, exceptionToThrow, newContext, inputParamsRaw, outputParamsRaw);
+            saveAndRecordFlowLogs(logRecord, code, businessId, exceptionToThrow, newContext);
+            restoreContext(parentContext);
+        }
+    }
 
-            String outputParamsRaw = null;
-            if (exceptionToThrow == null) {
-                try {
-                    if (StringUtils.hasText(businessTrace.outputParams())) {
-                        outputParamsRaw = spelParser.parse(businessTrace.outputParams(), method, args, result);
-                    }
-                } catch (Exception e) {
-                    log.warn("Failed to parse outputParams SpEL: {}", businessTrace.outputParams(), e);
-                }
+    private String resolveBusinessId(BusinessTrace businessTrace, Method method, Object[] args) {
+        try {
+            String businessId = spelParser.parse(businessTrace.key(), method, args);
+            if (StringUtils.hasText(businessId)) {
+                return businessId;
             }
+        } catch (Exception e) {
+            log.error("Failed to parse BusinessTrace key SpEL: {}", businessTrace.key(), e);
+        }
+        return "UNKNOWN";
+    }
 
-            // 5. Save Node Log
-            NodeLog logRecord = NodeLog.builder()
-                    .businessId(businessId)
-                    .code(code)
-                    .name(name)
-                    .traceId(traceId)
-                    .nodeId(nodeId)
-                    .parentNodeId(parentNodeId)
-                    .content(StringUtils.hasText(businessTrace.operation()) ? businessTrace.operation()
-                            : method.getName())
-                    .appName(appName)
-                    .status(status)
-                    .costTime(costTime)
-                    .exception(exceptionMsg)
-                    .inputParams(inputParamsRaw)
-                    .outputParams(outputParamsRaw)
-                    .createTime(LocalDateTime.now())
-                    .build();
+    private String resolveTraceId(TraceContext parentContext) {
+        return (parentContext != null && parentContext.getTraceId() != null)
+                ? parentContext.getTraceId()
+                : UUID.randomUUID().toString();
+    }
 
-            try {
-                nodeLogRepository.save(logRecord);
-                flowLogService.recordFlowLogs(code, businessId);
-                if (hasFailed && businessId != null && !"UNKNOWN".equals(businessId)) {
-                    flowLogService.markFlowsAsFailed(businessId);
-                }
-            } catch (Exception e) {
-                log.error("Failed to save BusinessTrace log", e);
+    private String resolveInputParams(BusinessTrace businessTrace, Method method, Object[] args) {
+        try {
+            if (StringUtils.hasText(businessTrace.inputParams())) {
+                return spelParser.parse(businessTrace.inputParams(), method, args);
             }
+        } catch (Exception e) {
+            log.warn("Failed to parse inputParams SpEL: {}", businessTrace.inputParams(), e);
+        }
+        return null;
+    }
 
-            // 6. Cleanup / Restore
-            if (parentContext != null) {
-                TraceContextHolder.setContext(parentContext);
-            } else {
-                TraceContextHolder.clear();
+    private String resolveOutputParams(BusinessTrace businessTrace, Method method, Object[] args,
+            Object result, Throwable exception) {
+        if (exception != null) {
+            return null;
+        }
+        try {
+            if (StringUtils.hasText(businessTrace.outputParams())) {
+                return spelParser.parse(businessTrace.outputParams(), method, args, result);
             }
+        } catch (Exception e) {
+            log.warn("Failed to parse outputParams SpEL: {}", businessTrace.outputParams(), e);
+        }
+        return null;
+    }
+
+    private NodeLog buildNodeLog(String businessId, String code, String name,
+            String traceId, String nodeId, String parentNodeId,
+            BusinessTrace businessTrace, Method method,
+            long costTime, Throwable exception,
+            TraceContext context, String inputParams, String outputParams) {
+        boolean hasFailed = exception != null || context.isErrorRecorded();
+        String status = hasFailed ? TraceStatus.FAILED.getValue() : TraceStatus.COMPLETED.getValue();
+        String exceptionMsg = exception != null ? exception.toString() : null;
+
+        return NodeLog.builder()
+                .businessId(businessId)
+                .code(code)
+                .name(name)
+                .traceId(traceId)
+                .nodeId(nodeId)
+                .parentNodeId(parentNodeId)
+                .content(StringUtils.hasText(businessTrace.operation()) ? businessTrace.operation() : method.getName())
+                .appName(appName)
+                .status(status)
+                .costTime(costTime)
+                .exception(exceptionMsg)
+                .inputParams(inputParams)
+                .outputParams(outputParams)
+                .createTime(LocalDateTime.now())
+                .build();
+    }
+
+    private void saveAndRecordFlowLogs(NodeLog logRecord, String code, String businessId,
+            Throwable exception, TraceContext context) {
+        try {
+            nodeLogRepository.save(logRecord);
+            flowLogService.recordFlowLogs(code, businessId);
+            boolean hasFailed = exception != null || context.isErrorRecorded();
+            if (hasFailed && businessId != null && !"UNKNOWN".equals(businessId)) {
+                flowLogService.markFlowsAsFailed(businessId);
+            }
+        } catch (Exception e) {
+            log.error("Failed to save BusinessTrace log", e);
+        }
+    }
+
+    private void checkFlowStatus(String businessId, String code) {
+        try {
+            if (businessId != null && !"UNKNOWN".equals(businessId) && code != null) {
+                flowLogService.checkAndUpdateFlowStatusByNodeCode(businessId, code);
+            }
+        } catch (Exception e) {
+            log.error("Failed to check and update flow status", e);
+        }
+    }
+
+    private void restoreContext(TraceContext parentContext) {
+        if (parentContext != null) {
+            TraceContextHolder.setContext(parentContext);
+        } else {
+            TraceContextHolder.clear();
         }
     }
 }

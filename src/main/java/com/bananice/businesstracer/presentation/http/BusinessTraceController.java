@@ -2,41 +2,37 @@ package com.bananice.businesstracer.presentation.http;
 
 import com.bananice.businesstracer.application.DslService;
 import com.bananice.businesstracer.application.FlowLogService;
+import com.bananice.businesstracer.application.dto.DslRenderResult;
+import com.bananice.businesstracer.application.dto.PageResult;
 import com.bananice.businesstracer.domain.model.DslConfig;
 import com.bananice.businesstracer.domain.model.DetailLog;
+import com.bananice.businesstracer.domain.model.FlowLog;
 import com.bananice.businesstracer.domain.model.NodeLog;
 import com.bananice.businesstracer.domain.repository.DetailLogRepository;
 import com.bananice.businesstracer.domain.repository.NodeLogRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import javax.annotation.Resource;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/business-tracer")
+@RequiredArgsConstructor
 public class BusinessTraceController {
 
-    @Resource
-    private NodeLogRepository nodeLogRepository;
-
-    @Resource
-    private DetailLogRepository detailLogRepository;
-
-    @Resource
-    private DslService dslService;
-
-    @Resource
-    private FlowLogService flowLogService;
+    private final NodeLogRepository nodeLogRepository;
+    private final DetailLogRepository detailLogRepository;
+    private final DslService dslService;
+    private final FlowLogService flowLogService;
 
     /**
      * Get flow logs list
      */
     @GetMapping("/api/flow-logs")
-    public Map<String, Object> getFlowLogs(
+    public PageResult<FlowLog> getFlowLogs(
             @RequestParam(value = "flowCode", required = false) String flowCode,
             @RequestParam(value = "businessId", required = false) String businessId,
             @RequestParam(value = "pageNum", defaultValue = "1") int pageNum,
@@ -48,7 +44,7 @@ public class BusinessTraceController {
      * Get trace with DSL structure
      */
     @GetMapping("/trace")
-    public Map<String, Object> getTraceWithDsl(
+    public DslRenderResult getTraceWithDsl(
             @RequestParam("businessId") String businessId,
             @RequestParam(value = "flowCode", required = false) String flowCode) {
 

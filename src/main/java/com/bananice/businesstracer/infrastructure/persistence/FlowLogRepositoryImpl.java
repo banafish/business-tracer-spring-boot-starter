@@ -5,11 +5,11 @@ import com.bananice.businesstracer.domain.model.FlowLog;
 import com.bananice.businesstracer.domain.repository.FlowLogRepository;
 import com.bananice.businesstracer.infrastructure.persistence.mapper.FlowLogMapper;
 import com.bananice.businesstracer.infrastructure.persistence.po.FlowLogPO;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
 
-import javax.annotation.Resource;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -17,10 +17,10 @@ import java.util.stream.Collectors;
  * Infrastructure implementation of the Flow Log Repository
  */
 @Repository
+@RequiredArgsConstructor
 public class FlowLogRepositoryImpl implements FlowLogRepository {
 
-    @Resource
-    private FlowLogMapper flowLogMapper;
+    private final FlowLogMapper flowLogMapper;
 
     @Override
     public void save(FlowLog flowLog) {
