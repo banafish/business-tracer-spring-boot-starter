@@ -8,11 +8,13 @@ Unlike traditional APM (TraceId-based), Business Tracer aggregates logs based on
 
 - **Business ID Centric**: Aggregates logs by Business ID (e.g., Order No) across different requests and services.
 - **Node & Detail Tracking**:
-    - **Node**: High-level step defined by `@BusinessTrace` on methods.
-    - **Detail**: Fine-grained steps recorded via `BusinessTracer.record()` inside nodes.
+    - **Node**: High-level step defined by `@BusinessTrace` on methods. Tracks execution time (`cost_time`), input/output parameters via SpEL, and exceptions.
+    - **Detail**: Fine-grained steps or errors recorded via `BusinessTracer.record()` and `BusinessTracer.recordError()` inside nodes.
+- **Visual Trace UI & DSL Editor**: Built-in Drawflow-based UI integration for designing business flows (DSL) and viewing execution traces in real-time. Nodes display elapsed time, parameters, exceptions, and color-coded statuses (e.g., green for success, red for failures).
+- **Advanced Error Handling**: Captures method exceptions automatically. Can also programmatically trigger node/flow failures using `BusinessTracer.recordError()`.
 - **Distributed Propagation**: Automatically propagates Business ID and context via HTTP headers (`X-Business-Id`) between microservices.
 - **MDC Integration**: Automatically injects `businessId` and `traceId` into SLF4J MDC for correlation with standard logs.
-- **Persistent Storage**: Stores trace data in MySQL using MyBatis-Plus for long-term retention and analysis.
+- **Domain-Driven Design (DDD)**: Architected utilizing DDD principles for easier maintenance and testing boundaries. Excellent support for Spock + H2 unit testing.
 
 ## Quick Start
 
@@ -22,15 +24,7 @@ Unlike traditional APM (TraceId-based), Business Tracer aggregates logs based on
 - Spring Boot 2.x
 - MySQL Database
 
-### 2. Installation
-
-Install the starter to your local Maven repository:
-
-```bash
-mvn clean install
-```
-
-### 3. Dependency
+### 2. Dependency
 
 Add the dependency to your project's `pom.xml`:
 
@@ -42,30 +36,21 @@ Add the dependency to your project's `pom.xml`:
 </dependency>
 ```
 
-### 4. Database Setup
+Need to install the starter to your local Maven repository:
 
-Execute the initialization script to create the necessary table:
-
-`sql/init.sql`:
-
-```sql
-CREATE TABLE IF NOT EXISTS `business_trace_log` (
-  `id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `business_id` varchar(64) NOT NULL,
-  `trace_id` varchar(64) DEFAULT NULL,
-  `node_id` varchar(64) NOT NULL,
-  `parent_node_id` varchar(64) DEFAULT NULL,
-  `log_type` varchar(16) NOT NULL, -- NODE or DETAIL
-  `content` text,
-  `group_id` varchar(64) DEFAULT NULL,
-  `app_name` varchar(64) DEFAULT NULL,
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `idx_business_id` (`business_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```bash
+mvn clean install
 ```
 
-### 5. Configuration
+### 3. Database Setup
+
+Execute the initialization script (`sql/init.sql`) to create the necessary tables:
+- `business_flow_dsl`: Stores flow definition DSLs (JSON).
+- `business_flow_log`: Top level flow tracking logs.
+- `business_trace_node`: Tracks each step (node) in the flow, including parameters, execution time, exceptions, and status.
+- `business_trace_detail`: Tracks internal node details and errors.
+
+### 4. Configuration
 
 Configure your database connection in `application.yml` or `application.properties`:
 
@@ -84,54 +69,90 @@ spring:
 
 ### 1. Annotation Mode (Defining Nodes)
 
-Use `@BusinessTrace` on your service methods to define a "Node" in the business flow. Use SpEL to extract the Business ID.
+Use `@BusinessTrace` on your service methods to define a "Node" in the business flow. Use SpEL to extract the Business ID, as well as input/output parameters dynamically.
 
 ```java
+import com.bananice.businesstracer.api.BusinessTrace;
+
 @Service
 public class OrderService {
 
-    @BusinessTrace(key = "#order.orderId", operation = "Create Order", groupId = "ORDER_FLOW")
-    public void createOrder(Order order) {
+    @BusinessTrace(
+        code = "CREATE_ORDER", // Unique identifier for the node, used to define the flow in DSL
+        name = "Create Order", // Human-readable name
+        key = "#order.orderId", // Business ID (SpEL)
+        operation = "Create a new order", // Description of the operation
+        inputParams = "#order",
+        outputParams = "#result"
+    )
+    public OrderResult createOrder(Order order) {
         // Business logic...
+        return new OrderResult(true);
     }
 }
 ```
+If an unhandled exception occurs in a `@BusinessTrace` method, the node and its parent flow are automatically marked as `FAILED`, and the stack trace is recorded. The execution time (`cost_time`) is automatically tracked.
 
-### 2. Programmatic Mode (Recording Details)
+### 2. Programmatic Mode (Recording Details & Errors)
 
-Inside a traced method (Node), use `BusinessTracer.record` to add detailed logs.
+Inside a traced method (Node), use `BusinessTracer` to add detailed logs or explicitly record errors that should mark the node as failed without throwing an exception.
 
 ```java
+import com.bananice.businesstracer.api.BusinessTracer;
+
 @Service
 public class OrderService {
 
-    @BusinessTrace(key = "#orderId", operation = "Process Payment")
+    @BusinessTrace(code = "PAY", key = "#orderId", name = "Process Payment")
     public void pay(String orderId) {
-        // ...
         BusinessTracer.record("Payment validation successful");
-        // ...
-        BusinessTracer.record("Payment gateway response received");
+        
+        if (paymentFails()) {
+            // Records a detail log with status=FAILED and marks the whole node and flow as FAILED
+            BusinessTracer.recordError("Gateway timeout");
+        }
     }
 }
 ```
 
-### 3. Distributed Tracing
+### 3. Visual Trace UI
 
-When making HTTP calls to downstream services, the component automatically handles context propagation if you use standard mechanisms (interceptor logic is provided). Ensure downstream services also include this starter.
+The component provides a built-in web interface for visualizing business flows and execution traces. Once your application is started, you can access the UI at:
+
+**`http://localhost:8080/business-tracer/index.html`**
+
+![DSL Management](img/image1.png)
+
+- **DSL Management**: Create and edit business flow definitions using a visual graph editor.
+
+![Flow Logs](img/image3.png)
+
+- **Trace Visualization**: View the execution path of a specific `businessId`, including node status (Success/Failure), execution time, and detailed logs.
+
+![Trace Visualization](img/image2.png)
+
+- **API Endpoints**: The UI communicates via endpoints like `/business-tracer/api/flow-logs` and `/business-tracer/api/trace?businessId=...`.
+
+### 4. Distributed Tracing
+
+When making HTTP calls to downstream services, the component automatically handles context propagation via standard mechanisms.
 
 The following headers are propagated:
 - `X-Business-Id`
 - `X-Trace-Id`
 - `X-Parent-Node-Id`
 
+Ensure downstream services also include this starter to link their logs together.
+
 ## Architecture
 
-The project follows a Domain-Driven Design (DDD) structure:
+The project is structured following **Domain-Driven Design (DDD)** principles:
 
-- **API**: Public annotations and static helpers.
-- **Domain**: Core entities (`LogRecord`) and repository interfaces.
-- **Infrastructure**: Implementation of persistence (MyBatis-Plus), Context (ThreadLocal/MDC), and AOP.
-- **Config**: Spring Boot auto-configuration.
+- **API**: Public annotations (`@BusinessTrace`) and static helpers (`BusinessTracer`).
+- **Application**: Application services (`DslService`, `FlowLogService`, etc).
+- **Domain**: Core entities (`NodeLog`, `DetailLog`, `FlowLog`, `DslConfig`), and repositories.
+- **Infrastructure**: Implementation of persistence, MVC Controllers (Presentation), Context (ThreadLocal/MDC), and AOP Interceptors inside Spring Boot auto-configuration.
+- **Tests**: Exhaustive test suite utilizing **Spock Framework** along with H2 in-memory databases.
 
 ## License
 
