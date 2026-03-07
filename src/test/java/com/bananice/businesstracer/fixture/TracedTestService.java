@@ -18,6 +18,9 @@ public class TracedTestService {
     @Resource
     private TracedTestService self;
 
+    @Resource(name = "businessTracerTaskExecutor")
+    private org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor taskExecutor;
+
     /**
      * 基础场景：只有 code 和 key
      */
@@ -65,5 +68,16 @@ public class TracedTestService {
     @BusinessTrace(code = "INNER_NODE", key = "#id")
     public String innerMethod(String id) {
         return "inner-" + id;
+    }
+
+    /**
+     * 测试 TraceContextTaskDecorator 的异步传播能力
+     */
+    @BusinessTrace(code = "PARENT_ASYNC_NODE", key = "#id")
+    public String spawnTask(String id) {
+        taskExecutor.execute(() -> {
+            BusinessTracer.record("async-log-from-" + id);
+        });
+        return "spawned";
     }
 }

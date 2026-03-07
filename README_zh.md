@@ -144,6 +144,40 @@ public class OrderService {
 
 你需要确保下游所有涉及处理的微服务同样引入并启用了本 Starter，这样才能使所有跨库与跨服务系统的日志串联合并在一起。
 
+### 5. 异步上下文传递 (Asynchronous Context Propagation)
+
+Business Tracer 提供了内置的支持，用于跨异步边界（例如：子线程、`@Async` 方法或线程池）传递追踪上下文。
+
+**1. 普通的子线程:**
+由于内部的上下文持有器使用了 `InheritableThreadLocal`，在有活跃追踪上下文的业务代码中，直接通过 `new Thread()` 启动的任何普通子线程，会自动继承 `TraceContext`。
+
+**2. 线程池与 `@Async`:**
+当使用线程池时，因为线程会被池化和复用，会导致默认的继承机制失效。为了确保业务上下文和 MDC 能顺利传递给线程池内部运行的任务（也包含标准的 Spring `@Async` 方法），你需要将项目中的 `ThreadPoolTaskExecutor` 显式配置挂载 `TraceContextTaskDecorator` 装饰器：
+
+```java
+import com.bananice.businesstracer.infrastructure.context.TraceContextTaskDecorator;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+
+@Configuration
+public class ExecutorConfig {
+
+    @Bean("myTaskExecutor")
+    public ThreadPoolTaskExecutor myTaskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(5);
+        // ... 其他配置项 ...
+        // 关键步骤：添加 TaskDecorator 来接力传递 TraceContext
+        executor.setTaskDecorator(new TraceContextTaskDecorator());
+        executor.initialize();
+        return executor;
+    }
+}
+```
+
+配置完成后，任何提交给 `myTaskExecutor` 运行的异步方法都会无缝继承父线程的“业务ID (Business ID)”。这意味着你可以在所有的异步任务内部放心使用 `BusinessTracer.record()`、`BusinessTracer.recordError()`，而标准 SLF4J 的 MDC 输出也能正常工作。
+
 ## 架构说明 (Architecture)
 
 整体的项目代码结构严格遵循了 **领域驱动设计 (DDD)** 的思想与原则：

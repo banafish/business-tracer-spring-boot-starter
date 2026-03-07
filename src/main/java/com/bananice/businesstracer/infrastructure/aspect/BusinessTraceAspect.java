@@ -2,9 +2,9 @@ package com.bananice.businesstracer.infrastructure.aspect;
 
 import com.bananice.businesstracer.api.BusinessTrace;
 import com.bananice.businesstracer.application.FlowLogService;
+import com.bananice.businesstracer.application.TraceAsyncLogService;
 import com.bananice.businesstracer.domain.model.NodeLog;
 import com.bananice.businesstracer.domain.model.TraceStatus;
-import com.bananice.businesstracer.domain.repository.NodeLogRepository;
 import com.bananice.businesstracer.infrastructure.context.TraceContext;
 import com.bananice.businesstracer.infrastructure.context.TraceContextHolder;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +28,7 @@ import java.util.UUID;
 public class BusinessTraceAspect {
 
     private final SpelParser spelParser;
-    private final NodeLogRepository nodeLogRepository;
+    private final TraceAsyncLogService traceAsyncLogService;
     private final FlowLogService flowLogService;
 
     @Value("${spring.application.name:unknown-service}")
@@ -154,16 +154,8 @@ public class BusinessTraceAspect {
 
     private void saveAndRecordFlowLogs(NodeLog logRecord, String code, String businessId,
             Throwable exception, TraceContext context) {
-        try {
-            nodeLogRepository.save(logRecord);
-            flowLogService.recordFlowLogs(code, businessId);
-            boolean hasFailed = exception != null || context.isErrorRecorded();
-            if (hasFailed && businessId != null && !"UNKNOWN".equals(businessId)) {
-                flowLogService.markFlowsAsFailed(businessId);
-            }
-        } catch (Exception e) {
-            log.error("Failed to save BusinessTrace log", e);
-        }
+        boolean hasFailed = exception != null || context.isErrorRecorded();
+        traceAsyncLogService.saveNodeLogAndFlowLogsAsync(logRecord, code, businessId, hasFailed);
     }
 
     private void checkFlowStatus(String businessId, String code) {

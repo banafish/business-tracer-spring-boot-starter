@@ -126,7 +126,7 @@ class TraceContextHolderSpec extends Specification {
 
     // ==================== Thread Isolation ====================
 
-    def "不同线程的TraceContext互相隔离"() {
+    def "子线程继承主线程的TraceContext"() {
         given: "主线程设置context"
         TraceContextHolder.setContext(
                 TraceContext.builder().businessId("main-thread").build()
@@ -140,8 +140,8 @@ class TraceContextHolderSpec extends Specification {
         thread.start()
         thread.join()
 
-        then: "子线程取不到主线程的context"
-        childBusinessId == null
+        then: "子线程能获取到主线程的context（InheritableThreadLocal生效）"
+        childBusinessId == "main-thread"
 
         and: "主线程的context不受影响"
         TraceContextHolder.getBusinessId() == "main-thread"

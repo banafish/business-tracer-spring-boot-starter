@@ -4,15 +4,19 @@ import com.bananice.businesstracer.domain.model.DetailLog
 import com.bananice.businesstracer.domain.repository.DetailLogRepository
 import com.bananice.businesstracer.infrastructure.context.TraceContext
 import com.bananice.businesstracer.infrastructure.context.TraceContextHolder
+import com.bananice.businesstracer.application.TraceAsyncLogService
+import org.springframework.context.ApplicationContext
 import spock.lang.Specification
 
 class BusinessTracerSpec extends Specification {
 
-    DetailLogRepository mockRepository = Mock()
+    TraceAsyncLogService mockService = Mock()
+    ApplicationContext mockContext = Mock()
 
     def setup() {
-        // 通过构造函数注入静态repository
-        new BusinessTracer(mockRepository)
+        mockContext.getBean(TraceAsyncLogService.class) >> mockService
+        def tracer = new BusinessTracer()
+        tracer.setApplicationContext(mockContext)
     }
 
     def cleanup() {
@@ -41,7 +45,7 @@ class BusinessTracerSpec extends Specification {
         BusinessTracer.record("测试日志内容")
 
         then: "保存一条NORMAL的DetailLog"
-        1 * mockRepository.save({ DetailLog log ->
+        1 * mockService.saveDetailLogAsync({ DetailLog log ->
             log.businessId == "bus-record" &&
             log.parentNodeId == "node-record" &&
             log.content == "测试日志内容" &&
@@ -58,7 +62,7 @@ class BusinessTracerSpec extends Specification {
         BusinessTracer.record("无上下文日志")
 
         then: "不应调用save"
-        0 * mockRepository.save(_)
+        0 * mockService.saveDetailLogAsync(_)
     }
 
     // ==================== recordError() ====================
@@ -71,7 +75,7 @@ class BusinessTracerSpec extends Specification {
         BusinessTracer.recordError("出现异常")
 
         then: "保存一条FAILED的DetailLog"
-        1 * mockRepository.save({ DetailLog log ->
+        1 * mockService.saveDetailLogAsync({ DetailLog log ->
             log.businessId == "bus-err" &&
             log.parentNodeId == "node-err" &&
             log.content == "出现异常" &&
@@ -90,7 +94,7 @@ class BusinessTracerSpec extends Specification {
         BusinessTracer.recordError("无上下文错误")
 
         then: "不应调用save"
-        0 * mockRepository.save(_)
+        0 * mockService.saveDetailLogAsync(_)
         noExceptionThrown()
     }
 
@@ -106,7 +110,7 @@ class BusinessTracerSpec extends Specification {
         BusinessTracer.record("日志3")
 
         then: "save被调用3次"
-        3 * mockRepository.save(_ as DetailLog)
+        3 * mockService.saveDetailLogAsync(_ as DetailLog)
     }
 
     def "先record再recordError，errorRecorded应为true"() {
@@ -118,10 +122,10 @@ class BusinessTracerSpec extends Specification {
         BusinessTracer.recordError("错误日志")
 
         then: "按顺序保存"
-        1 * mockRepository.save({ it.status == "NORMAL" })
+        1 * mockService.saveDetailLogAsync({ it.status == "NORMAL" })
 
         then: "然后保存错误日志"
-        1 * mockRepository.save({ it.status == "FAILED" })
+        1 * mockService.saveDetailLogAsync({ it.status == "FAILED" })
 
         and: "errorRecorded标记为true"
         TraceContextHolder.getContext().isErrorRecorded()

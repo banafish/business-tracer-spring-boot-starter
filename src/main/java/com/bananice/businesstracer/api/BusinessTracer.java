@@ -2,9 +2,13 @@ package com.bananice.businesstracer.api;
 
 import com.bananice.businesstracer.domain.model.DetailLog;
 import com.bananice.businesstracer.domain.model.TraceStatus;
-import com.bananice.businesstracer.domain.repository.DetailLogRepository;
+import com.bananice.businesstracer.application.TraceAsyncLogService;
 import com.bananice.businesstracer.infrastructure.context.TraceContext;
 import com.bananice.businesstracer.infrastructure.context.TraceContextHolder;
+import org.springframework.beans.BeansException;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -13,15 +17,20 @@ import java.time.LocalDateTime;
  * Static API for recording detailed logs within a traced flow.
  */
 @Component
-public class BusinessTracer {
+public class BusinessTracer implements ApplicationContextAware {
 
-    private static BusinessTracer instance;
+    private static ApplicationContext applicationContext;
 
-    private final DetailLogRepository repository;
+    @Override
+    public void setApplicationContext(@NonNull ApplicationContext context) throws BeansException {
+        applicationContext = context;
+    }
 
-    public BusinessTracer(DetailLogRepository repository) {
-        this.repository = repository;
-        BusinessTracer.instance = this;
+    private static TraceAsyncLogService getTraceAsyncLogService() {
+        if (applicationContext == null) {
+            return null;
+        }
+        return applicationContext.getBean(TraceAsyncLogService.class);
     }
 
     /**
@@ -43,8 +52,9 @@ public class BusinessTracer {
                 .createTime(LocalDateTime.now())
                 .build();
 
-        if (instance != null) {
-            instance.repository.save(log);
+        TraceAsyncLogService service = getTraceAsyncLogService();
+        if (service != null) {
+            service.saveDetailLogAsync(log);
         }
     }
 
@@ -71,8 +81,9 @@ public class BusinessTracer {
                 .createTime(LocalDateTime.now())
                 .build();
 
-        if (instance != null) {
-            instance.repository.save(log);
+        TraceAsyncLogService service = getTraceAsyncLogService();
+        if (service != null) {
+            service.saveDetailLogAsync(log);
         }
 
         // Set flag so the aspect knows to mark node and flows as FAILED

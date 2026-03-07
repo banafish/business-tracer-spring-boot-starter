@@ -144,6 +144,40 @@ The following headers are propagated:
 
 Ensure downstream services also include this starter to link their logs together.
 
+### 5. Asynchronous Context Propagation
+
+Business Tracer provides built-in support for propagating the trace context across asynchronous boundaries (e.g., child threads, `@Async` methods, or thread pools).
+
+**1. Simple Child Threads:**
+Because the internal context holder uses `InheritableThreadLocal`, any simple `new Thread()` spawned from an active business trace will automatically inherit the `TraceContext`.
+
+**2. Thread Pools & `@Async`:**
+When using thread pools, the thread reuse prevents natural inheritance. To ensure context propagates to pooled threads (and standard Spring `@Async` methods), configure your `ThreadPoolTaskExecutor` to use `TraceContextTaskDecorator`:
+
+```java
+import com.bananice.businesstracer.infrastructure.context.TraceContextTaskDecorator;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+
+@Configuration
+public class ExecutorConfig {
+
+    @Bean("myTaskExecutor")
+    public ThreadPoolTaskExecutor myTaskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(5);
+        // ... other configurations ...
+        // IMPORTANT: Add the TaskDecorator to propagate TraceContext
+        executor.setTaskDecorator(new TraceContextTaskDecorator());
+        executor.initialize();
+        return executor;
+    }
+}
+```
+
+Now, any asynchronous method running inside `myTaskExecutor` will seamlessly inherit the parent thread's `Business ID`. This enables `BusinessTracer.record()`, `BusinessTracer.recordError()`, and standard SLF4J MDC usage to function seamlessly within asynchronous tasks.
+
 ## Architecture
 
 The project is structured following **Domain-Driven Design (DDD)** principles:

@@ -13,13 +13,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.util.ConcurrentReferenceHashMap;
 
 @Component
 public class SpelParser {
 
     private final ExpressionParser parser = new SpelExpressionParser();
-    private final Map<String, Expression> cache = new ConcurrentHashMap<>();
+    private final Map<String, Expression> cache = new ConcurrentReferenceHashMap<>(256);
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final ParameterNameDiscoverer parameterNameDiscoverer = new DefaultParameterNameDiscoverer();
 

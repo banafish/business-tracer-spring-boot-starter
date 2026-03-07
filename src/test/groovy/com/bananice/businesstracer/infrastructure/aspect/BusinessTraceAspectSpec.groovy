@@ -10,6 +10,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.transaction.annotation.Transactional
 import spock.lang.Specification
 import spock.lang.Subject
+import spock.util.concurrent.PollingConditions
 
 import javax.annotation.Resource
 
@@ -26,6 +27,8 @@ class BusinessTraceAspectSpec extends Specification {
 
     @Resource
     DetailLogRepository detailLogRepository
+
+    PollingConditions conditions = new PollingConditions(timeout: 3, initialDelay: 0.2)
 
     def cleanup() {
         TraceContextHolder.clear()
@@ -47,17 +50,19 @@ class BusinessTraceAspectSpec extends Specification {
         result == "ok-ORD-001"
 
         and: "数据库中有对应的NodeLog"
-        def logs = findLogs("ORD-001")
-        logs.size() == 1
-        verifyAll(logs[0]) {
-            businessId == "ORD-001"
-            code == "BASIC_NODE"
-            name == "BASIC_NODE"   // name未设置时默认等于code
-            status == "COMPLETED"
-            costTime != null
-            costTime >= 0
-            nodeId != null
-            traceId != null
+        conditions.eventually {
+            def logs = findLogs("ORD-001")
+            assert logs.size() == 1
+            verifyAll(logs[0]) {
+                businessId == "ORD-001"
+                code == "BASIC_NODE"
+                name == "BASIC_NODE"   // name未设置时默认等于code
+                status == "COMPLETED"
+                costTime != null
+                costTime >= 0
+                nodeId != null
+                traceId != null
+            }
         }
     }
 
@@ -79,16 +84,18 @@ class BusinessTraceAspectSpec extends Specification {
         result == "result-BIZ-FULL"
 
         and: "NodeLog中记录了完整信息"
-        def logs = findLogs("BIZ-FULL")
-        logs.size() == 1
-        verifyAll(logs[0]) {
-            businessId == "BIZ-FULL"
-            code == "FULL_NODE"
-            name == "完整节点"
-            content == "执行完整操作"   // operation
-            inputParams == "BIZ-FULL"   // SpEL #bizId
-            outputParams == "result-BIZ-FULL"  // SpEL #result
-            status == "COMPLETED"
+        conditions.eventually {
+            def logs = findLogs("BIZ-FULL")
+            assert logs.size() == 1
+            verifyAll(logs[0]) {
+                businessId == "BIZ-FULL"
+                code == "FULL_NODE"
+                name == "完整节点"
+                content == "执行完整操作"   // operation
+                inputParams == "BIZ-FULL"   // SpEL #bizId
+                outputParams == "result-BIZ-FULL"  // SpEL #result
+                status == "COMPLETED"
+            }
         }
     }
 
@@ -103,14 +110,16 @@ class BusinessTraceAspectSpec extends Specification {
         ex.message.contains("测试异常: ERR-001")
 
         and: "NodeLog记录了FAILED状态和异常信息"
-        def logs = findLogs("ERR-001")
-        logs.size() == 1
-        verifyAll(logs[0]) {
-            businessId == "ERR-001"
-            code == "ERROR_NODE"
-            status == "FAILED"
-            exception != null
-            exception.contains("测试异常: ERR-001")
+        conditions.eventually {
+            def logs = findLogs("ERR-001")
+            assert logs.size() == 1
+            verifyAll(logs[0]) {
+                businessId == "ERR-001"
+                code == "ERROR_NODE"
+                status == "FAILED"
+                exception != null
+                exception.contains("测试异常: ERR-001")
+            }
         }
     }
 
@@ -124,16 +133,18 @@ class BusinessTraceAspectSpec extends Specification {
         result == "done"
 
         and: "NodeLog状态被标记为FAILED（因为recordError设置了errorRecorded标志）"
-        def logs = findLogs("MANUAL-001")
-        logs.size() == 1
-        logs[0].status == "FAILED"
-        logs[0].exception == null  // 没有实际异常抛出
-
-        and: "DetailLog中记录了手动的错误日志"
-        def details = detailLogRepository.findByParentNodeId(logs[0].nodeId)
-        details.size() == 1
-        details[0].status == "FAILED"
-        details[0].content == "手动记录的错误: MANUAL-001"
+        conditions.eventually {
+            def logs = findLogs("MANUAL-001")
+            assert logs.size() == 1
+            assert logs[0].status == "FAILED"
+            assert logs[0].exception == null  // 没有实际异常抛出
+    
+            // and: "DetailLog中记录了手动的错误日志"
+            def details = detailLogRepository.findByParentNodeId(logs[0].nodeId)
+            assert details.size() == 1
+            assert details[0].status == "FAILED"
+            assert details[0].content == "手动记录的错误: MANUAL-001"
+        }
     }
 
     // ==================== 嵌套调用场景 ====================
@@ -145,24 +156,20 @@ class BusinessTraceAspectSpec extends Specification {
         then: "返回内层结果"
         result == "inner-NEST-001"
 
-        and: "数据库中有两条NodeLog"
-        def logs = findLogs("NEST-001")
-        logs.size() == 2
-
-        and: "一条是外层节点，一条是内层节点"
-        def outerLog = logs.find { it.code == "OUTER_NODE" }
-        def innerLog = logs.find { it.code == "INNER_NODE" }
-        outerLog != null
-        innerLog != null
-
-        and: "内层的parentNodeId指向外层的nodeId"
-        innerLog.parentNodeId == outerLog.nodeId
-
-        and: "两者共享同一个traceId"
-        outerLog.traceId == innerLog.traceId
-
-        and: "外层没有parentNodeId（根节点）"
-        outerLog.parentNodeId == null
+        and: "数据库中有两条NodeLog且关系正确"
+        conditions.eventually {
+            def logs = findLogs("NEST-001")
+            assert logs.size() == 2
+    
+            def outerLog = logs.find { it.code == "OUTER_NODE" }
+            def innerLog = logs.find { it.code == "INNER_NODE" }
+            assert outerLog != null
+            assert innerLog != null
+    
+            assert innerLog.parentNodeId == outerLog.nodeId
+            assert outerLog.traceId == innerLog.traceId
+            assert outerLog.parentNodeId == null
+        }
     }
 
     // ==================== appName ====================
@@ -172,8 +179,11 @@ class BusinessTraceAspectSpec extends Specification {
         tracedTestService.basicMethod("APP-NAME-TEST")
 
         then:
-        def logs = findLogs("APP-NAME-TEST")
-        logs[0].appName != null
+        conditions.eventually {
+            def logs = findLogs("APP-NAME-TEST")
+            assert !logs.isEmpty()
+            assert logs[0].appName != null
+        }
     }
 
     // ==================== content 默认方法名 ====================
@@ -183,8 +193,11 @@ class BusinessTraceAspectSpec extends Specification {
         tracedTestService.basicMethod("CONTENT-DEFAULT")
 
         then:
-        def logs = findLogs("CONTENT-DEFAULT")
-        logs[0].content == "basicMethod"
+        conditions.eventually {
+            def logs = findLogs("CONTENT-DEFAULT")
+            assert !logs.isEmpty()
+            assert logs[0].content == "basicMethod"
+        }
     }
 
     // ==================== costTime ====================
@@ -194,9 +207,35 @@ class BusinessTraceAspectSpec extends Specification {
         tracedTestService.basicMethod("COST-TIME")
 
         then: "costTime >= 0 且是毫秒级"
-        def logs = findLogs("COST-TIME")
-        logs[0].costTime >= 0
-        logs[0].costTime < 5000  // 不应超过5秒
+        conditions.eventually {
+            def logs = findLogs("COST-TIME")
+            assert !logs.isEmpty()
+            assert logs[0].costTime >= 0
+            assert logs[0].costTime < 5000  // 不应超过5秒
+        }
+    }
+
+    // ==================== 异步上下文传播场景 ====================
+
+    def "通过businessTracerTaskExecutor执行的异步任务能继承TraceContext"() {
+        when: "调用包含异步任务的方法"
+        def result = tracedTestService.spawnTask("ASYNC-001")
+
+        then: "方法正常返回"
+        result == "spawned"
+
+        and: "主节点的NodeLog被记录"
+        conditions.eventually {
+            def logs = findLogs("ASYNC-001")
+            assert logs.size() == 1
+            assert logs[0].code == "PARENT_ASYNC_NODE"
+
+            // 异步线程中的DetailLog也能正确关联到该NodeLog
+            def details = detailLogRepository.findByParentNodeId(logs[0].nodeId)
+            assert details.size() == 1
+            assert details[0].content == "async-log-from-ASYNC-001"
+            assert details[0].businessId == "ASYNC-001"
+        }
     }
 
     // ==================== 多次调用互不干扰 ====================
@@ -207,10 +246,12 @@ class BusinessTraceAspectSpec extends Specification {
         tracedTestService.basicMethod("MULTI-002")
 
         then: "每个businessId各一条"
-        findLogs("MULTI-001").size() == 1
-        findLogs("MULTI-002").size() == 1
-
-        and: "nodeId不同"
-        findLogs("MULTI-001")[0].nodeId != findLogs("MULTI-002")[0].nodeId
+        conditions.eventually {
+            def logs1 = findLogs("MULTI-001")
+            def logs2 = findLogs("MULTI-002")
+            assert logs1.size() == 1
+            assert logs2.size() == 1
+            assert logs1[0].nodeId != logs2[0].nodeId
+        }
     }
 }

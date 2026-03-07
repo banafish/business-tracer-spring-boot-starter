@@ -5,7 +5,7 @@ import java.util.Optional;
 
 public class TraceContextHolder {
     
-    private static final ThreadLocal<TraceContext> CONTEXT = new ThreadLocal<>();
+    private static final ThreadLocal<TraceContext> CONTEXT = new InheritableThreadLocal<>();
 
     public static final String MDC_BUSINESS_ID = "businessId";
     public static final String MDC_TRACE_ID = "traceId";
