@@ -1,4 +1,14 @@
-# Business Tracer Spring Boot Starter
+<div align="center">
+
+<img src="https://img.shields.io/badge/Java-8+-blue" alt="Java 8+"> <img src="https://img.shields.io/badge/Spring%20Boot-2.x-brightgreen" alt="Spring Boot 2.x">  <img src="https://img.shields.io/badge/MySQL-8+-blue" alt="MySQL 8+">
+
+<h3>Business Tracer Spring Boot Starter</h3>
+
+English | <a href="README_zh.md">中文</a>
+
+</div>
+
+---
 
 Business Tracer is a lightweight distributed business link tracing component based on Spring Boot. It allows developers to trace the complete lifecycle of a business object (like an Order) across multiple services and disparate technical traces by using a unified **Business ID**.
 

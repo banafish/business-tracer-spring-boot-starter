@@ -1,4 +1,14 @@
-# Business Tracer Spring Boot Starter
+<div align="center">
+
+<img src="https://img.shields.io/badge/Java-8+-blue" alt="Java 8+"> <img src="https://img.shields.io/badge/Spring%20Boot-2.x-brightgreen" alt="Spring Boot 2.x"> <img src="https://img.shields.io/badge/MySQL-8+-blue" alt="MySQL 8+">
+
+<h3>Business Tracer Spring Boot Starter</h3>
+
+<a href="README.md">English</a> | 中文
+
+</div>
+
+---
 
 Business Tracer 是一个基于 Spring Boot 的轻量级分布式业务链路追踪组件。它允许开发者在跨多个服务及分散的技术链路中，使用统一的 **业务ID (Business ID)** 来追踪一个业务对象（例如订单）的完整生命周期。
 
