@@ -27,8 +27,12 @@ public class TraceAsyncLogService {
             nodeLogRepository.save(logRecord);
             flowLogService.recordFlowLogs(code, businessId);
             
-            if (hasFailed && businessId != null && !"UNKNOWN".equals(businessId)) {
-                flowLogService.markFlowsAsFailed(businessId);
+            if (businessId != null && !"UNKNOWN".equals(businessId)) {
+                if (hasFailed) {
+                    flowLogService.markFlowsAsFailed(businessId);
+                } else {
+                    flowLogService.checkAndUpdateFlowStatusByNodeCode(businessId, code);
+                }
             }
         } catch (Exception e) {
             log.error("Failed to asynchronously save BusinessTrace log", e);

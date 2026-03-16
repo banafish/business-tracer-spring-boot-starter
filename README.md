@@ -141,7 +141,7 @@ The component provides a built-in web interface for visualizing business flows a
 
 ![Trace Visualization](img/image2.png)
 
-- **API Endpoints**: The UI communicates via endpoints like `/business-tracer/api/flow-logs` and `/business-tracer/api/trace?businessId=...`.
+- **API Endpoints**: The UI communicates via endpoints like `/business-tracer/api/flow-logs` and `/business-tracer/trace?businessId=...`.
 
 ### 4. Distributed Tracing
 

@@ -1,7 +1,6 @@
 package com.bananice.businesstracer.infrastructure.aspect;
 
 import com.bananice.businesstracer.api.BusinessTrace;
-import com.bananice.businesstracer.application.FlowLogService;
 import com.bananice.businesstracer.application.TraceAsyncLogService;
 import com.bananice.businesstracer.domain.model.NodeLog;
 import com.bananice.businesstracer.domain.model.TraceStatus;
@@ -29,7 +28,6 @@ public class BusinessTraceAspect {
 
     private final SpelParser spelParser;
     private final TraceAsyncLogService traceAsyncLogService;
-    private final FlowLogService flowLogService;
 
     @Value("${spring.application.name:unknown-service}")
     private String appName;
@@ -66,7 +64,6 @@ public class BusinessTraceAspect {
         Throwable exceptionToThrow = null;
         try {
             result = point.proceed();
-            checkFlowStatus(businessId, code);
             return result;
         } catch (Throwable t) {
             exceptionToThrow = t;
@@ -156,16 +153,6 @@ public class BusinessTraceAspect {
             Throwable exception, TraceContext context) {
         boolean hasFailed = exception != null || context.isErrorRecorded();
         traceAsyncLogService.saveNodeLogAndFlowLogsAsync(logRecord, code, businessId, hasFailed);
-    }
-
-    private void checkFlowStatus(String businessId, String code) {
-        try {
-            if (businessId != null && !"UNKNOWN".equals(businessId) && code != null) {
-                flowLogService.checkAndUpdateFlowStatusByNodeCode(businessId, code);
-            }
-        } catch (Exception e) {
-            log.error("Failed to check and update flow status", e);
-        }
     }
 
     private void restoreContext(TraceContext parentContext) {

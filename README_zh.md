@@ -141,7 +141,7 @@ public class OrderService {
 
 ![Trace Visualization](img/image2.png)
 
-- **API 接口 (API Endpoints)**: 该 UI 内部是通过拉取类似于 `/business-tracer/api/flow-logs` 和 `/business-tracer/api/trace?businessId=...` 等端点接口来进行数据的通讯交互的。
+- **API 接口 (API Endpoints)**: 该 UI 内部是通过拉取类似于 `/business-tracer/api/flow-logs` 和 `/business-tracer/trace?businessId=...` 等端点接口来进行数据的通讯交互的。
 
 ### 4. 分布式追踪 (Distributed Tracing)
 

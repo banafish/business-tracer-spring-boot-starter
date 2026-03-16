@@ -31,7 +31,7 @@ public class BusinessTracerAutoConfiguration {
         executor.setMaxPoolSize(10);
         executor.setQueueCapacity(500);
         executor.setThreadNamePrefix("businessTracer-task-");
-        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.DiscardPolicy());
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         executor.setTaskDecorator(new TraceContextTaskDecorator());
         executor.initialize();
         return executor;

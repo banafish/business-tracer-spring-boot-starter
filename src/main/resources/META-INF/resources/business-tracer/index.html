@@ -1000,7 +1000,7 @@
                 currentData = await response.json();
                 renderData();
             } catch (e) {
-                resultDiv.innerHTML = `<div style="color:var(--danger);padding:20px;text-align:center;">加载失败: ${e.message}</div>`;
+                resultDiv.innerHTML = `<div style="color:var(--danger);padding:20px;text-align:center;">加载失败: ${escapeHtml(e.message)}</div>`;
             }
         }
 
@@ -1223,7 +1223,7 @@
                 const details = await res.json();
                 showDetailPanel(log, details);
             } catch (e) {
-                panel.innerHTML = `<div style="color:var(--danger);padding:20px;text-align:center;">加载失败: ${e.message}</div>`;
+                panel.innerHTML = `<div style="color:var(--danger);padding:20px;text-align:center;">加载失败: ${escapeHtml(e.message)}</div>`;
             }
         }
 
@@ -1255,8 +1255,8 @@
                             </div>
                             <span class="time">${timeStr}</span>
                         </div>
-                        <div class="node-name">${displayName}</div>
-                        ${log.content && log.content !== displayName ? `<div class="node-content">${log.content}</div>` : ''}
+                        <div class="node-name">${escapeHtml(displayName)}</div>
+                        ${log.content && log.content !== displayName ? `<div class="node-content">${escapeHtml(log.content)}</div>` : ''}
                         <div class="node-meta">
                             <span>NodeID: ${shortHash(log.nodeId)}</span>
                             <span>TraceID: ${shortHash(log.traceId)}</span>
@@ -1351,8 +1351,8 @@
                     </div>
                     <span class="time">${timeStr}</span>
                 </div>
-                <div class="node-name">${displayName}</div>
-                ${log.content ? `<div class="node-content">${log.content}</div>` : ''}
+                <div class="node-name">${escapeHtml(displayName)}</div>
+                ${log.content ? `<div class="node-content">${escapeHtml(log.content)}</div>` : ''}
                 <div class="node-meta">
                     <span>NodeID: ${shortHash(log.nodeId)}</span>
                     <span>TraceID: ${shortHash(log.traceId)}</span>
@@ -1422,7 +1422,7 @@
                                 ⏱️ ${dTimeStr}
                                 ${isDetailFailed ? '<span class="status-tag status-tag-failed" style="margin-left: 8px;">❌ FAILED</span>' : ''}
                             </div>
-                            <div class="detail-content">${d.content || '(空)'}</div>
+                            <div class="detail-content">${escapeHtml(d.content || '(空)')}</div>
                         </div>
                     `;
                 });
@@ -1452,7 +1452,7 @@
                                 ⏱️ ${timeStr}
                                 ${isDetailFailed ? '<span class="status-tag status-tag-failed" style="margin-left: 8px;">❌ FAILED</span>' : ''}
                             </div>
-                            <div class="detail-content">${d.content || '(空)'}</div>
+                            <div class="detail-content">${escapeHtml(d.content || '(空)')}</div>
                         </div>
                     `;
                 });
