@@ -2,9 +2,14 @@ package com.bananice.businesstracer.infrastructure.persistence.alert
 
 import spock.lang.Specification
 
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.Paths
 import java.sql.Connection
 import java.sql.DatabaseMetaData
 import java.sql.DriverManager
+import java.util.regex.Pattern
 
 class AlertSchemaSqlSpec extends Specification {
 
@@ -49,6 +54,38 @@ class AlertSchemaSqlSpec extends Specification {
         and:
         hasIndex(ruleIndexes, ["scope_type", "scope_code"], true)
         hasIndex(ruleIndexes, ["scope_type", "flow_code", "scope_code"], true)
+    }
+
+    def "init sql should contain alert ddl definitions"() {
+        given:
+        def initSql = readInitSql().toLowerCase()
+
+        expect:
+        containsCreateTable(initSql, "business_alert_rule")
+        containsCreateTable(initSql, "business_alert_channel")
+        containsCreateTable(initSql, "business_alert_event")
+        containsCreateTable(initSql, "business_alert_dispatch_log")
+        containsCreateTable(initSql, "business_alert_config_version")
+
+        and:
+        initSql.contains("uk_alert_rule_scope")
+        initSql.contains("uk_alert_rule_scope_flow")
+        initSql.contains("idx_alert_event_type_status_time")
+        initSql.contains("idx_alert_event_flow_node_biz_time")
+        initSql.contains("idx_alert_event_agg_status_occur")
+        initSql.contains("idx_alert_dispatch_event_time")
+        initSql.contains("uk_alert_config_version_no")
+    }
+
+    private static String readInitSql() {
+        Path initSqlPath = Paths.get(System.getProperty("user.dir"), "sql", "init.sql")
+        assert Files.exists(initSqlPath): "init.sql not found at ${initSqlPath}"
+        new String(Files.readAllBytes(initSqlPath), StandardCharsets.UTF_8)
+    }
+
+    private static boolean containsCreateTable(String sql, String tableName) {
+        def pattern = Pattern.compile("create\\s+table\\s+if\\s+not\\s+exists\\s+`" + Pattern.quote(tableName) + "`", Pattern.CASE_INSENSITIVE)
+        pattern.matcher(sql).find()
     }
 
     private void executeSchema(Connection connection) {
