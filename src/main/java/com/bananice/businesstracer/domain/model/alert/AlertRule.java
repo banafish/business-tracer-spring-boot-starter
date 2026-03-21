@@ -14,5 +14,6 @@ public class AlertRule {
     private AlertType alertType;
     private AlertScopeType scopeType;
     private String scopeRef;
+    private String flowCode;
     private Boolean enabled;
 }

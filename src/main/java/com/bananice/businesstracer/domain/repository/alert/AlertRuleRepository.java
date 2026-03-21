@@ -1,6 +1,7 @@
 package com.bananice.businesstracer.domain.repository.alert;
 
 import com.bananice.businesstracer.domain.model.alert.AlertRule;
+import com.bananice.businesstracer.domain.model.alert.AlertScopeType;
 
 import java.util.List;
 
@@ -10,12 +11,17 @@ import java.util.List;
 public interface AlertRuleRepository {
 
     /**
-     * Save an alert rule.
+     * Save (insert or update) an alert rule by scope uniqueness.
      */
     void save(AlertRule alertRule);
 
     /**
-     * Find enabled alert rules.
+     * Find one rule by scope.
      */
-    List<AlertRule> findEnabled();
+    AlertRule findByScope(AlertScopeType scopeType, String flowCode, String scopeRef);
+
+    /**
+     * Find all rules.
+     */
+    List<AlertRule> findAll();
 }
