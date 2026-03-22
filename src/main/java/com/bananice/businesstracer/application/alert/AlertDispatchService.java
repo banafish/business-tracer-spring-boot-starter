@@ -79,7 +79,7 @@ public class AlertDispatchService {
         }
         AlertEvent aggregatedEvent = AlertEvent.builder()
                 .id(-1L)
-                .alertType(AlertType.FLOW_STUCK)
+                .alertType(aggregationResult.getAlertType())
                 .status(AlertStatus.NEW)
                 .aggregateKey(aggregationResult.getAggregateKey())
                 .message(String.format("Aggregated alert %s count=%d window=[%s,%s)",

@@ -1,6 +1,7 @@
 package com.bananice.businesstracer.application.alert;
 
 import com.bananice.businesstracer.domain.model.alert.AlertEvent;
+import com.bananice.businesstracer.domain.model.alert.AlertType;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -31,10 +32,10 @@ public class AlertAggregationService {
             return;
         }
         LocalDateTime bucketStart = bucketStart(alertEvent.getOccurredAt());
-        BucketKey key = new BucketKey(alertEvent.getAggregateKey(), bucketStart);
+        BucketKey key = new BucketKey(alertEvent.getAggregateKey(), alertEvent.getAlertType(), bucketStart);
         AggregateCounter counter = counters.get(key);
         if (counter == null) {
-            counter = new AggregateCounter(alertEvent.getAggregateKey(), bucketStart);
+            counter = new AggregateCounter(alertEvent.getAggregateKey(), alertEvent.getAlertType(), bucketStart);
             counters.put(key, counter);
         }
         counter.increment();
@@ -49,7 +50,7 @@ public class AlertAggregationService {
             AggregateCounter counter = entry.getValue();
             LocalDateTime bucketEnd = counter.getBucketStart().plusMinutes(bucketMinutes);
             if (!bucketEnd.isAfter(flushTime)) {
-                results.add(new AggregationResult(counter.getAggregateKey(), counter.getCount(), counter.getBucketStart(), bucketEnd));
+                results.add(new AggregationResult(counter.getAggregateKey(), counter.getAlertType(), counter.getCount(), counter.getBucketStart(), bucketEnd));
                 toRemove.add(entry.getKey());
             }
         }
@@ -68,6 +69,7 @@ public class AlertAggregationService {
     @AllArgsConstructor
     public static class AggregationResult {
         private final String aggregateKey;
+        private final AlertType alertType;
         private final int count;
         private final LocalDateTime bucketStart;
         private final LocalDateTime bucketEnd;
@@ -75,11 +77,13 @@ public class AlertAggregationService {
 
     private static class AggregateCounter {
         private final String aggregateKey;
+        private final AlertType alertType;
         private final LocalDateTime bucketStart;
         private int count;
 
-        private AggregateCounter(String aggregateKey, LocalDateTime bucketStart) {
+        private AggregateCounter(String aggregateKey, AlertType alertType, LocalDateTime bucketStart) {
             this.aggregateKey = aggregateKey;
+            this.alertType = alertType;
             this.bucketStart = bucketStart;
         }
 
@@ -89,6 +93,10 @@ public class AlertAggregationService {
 
         public String getAggregateKey() {
             return aggregateKey;
+        }
+
+        public AlertType getAlertType() {
+            return alertType;
         }
 
         public LocalDateTime getBucketStart() {
@@ -105,6 +113,7 @@ public class AlertAggregationService {
     @AllArgsConstructor
     private static class BucketKey {
         private final String aggregateKey;
+        private final AlertType alertType;
         private final LocalDateTime bucketStart;
     }
 }

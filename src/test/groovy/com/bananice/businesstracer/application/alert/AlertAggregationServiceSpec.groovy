@@ -68,6 +68,22 @@ class AlertAggregationServiceSpec extends Specification {
         flushed.size() == 1
         flushed[0].aggregateKey == "k1"
         flushed[0].count == 1
+        flushed[0].alertType == AlertType.NODE_FAILED
+    }
+
+    def "aggregate keeps different alert types separated for same aggregate key"() {
+        given:
+        def occurredAt = LocalDateTime.of(2026, 3, 22, 10, 1)
+        alertAggregationService.aggregate(buildEvent(aggregateKey: "same-key", alertType: AlertType.NODE_FAILED, occurredAt: occurredAt))
+        alertAggregationService.aggregate(buildEvent(aggregateKey: "same-key", alertType: AlertType.SLOW_NODE, occurredAt: occurredAt.plusSeconds(5)))
+
+        when:
+        def flushed = alertAggregationService.flush(LocalDateTime.of(2026, 3, 22, 10, 6))
+
+        then:
+        flushed.size() == 2
+        flushed.find { it.aggregateKey == "same-key" && it.alertType == AlertType.NODE_FAILED }.count == 1
+        flushed.find { it.aggregateKey == "same-key" && it.alertType == AlertType.SLOW_NODE }.count == 1
     }
 
     def "flush job dispatches each matured aggregation result"() {

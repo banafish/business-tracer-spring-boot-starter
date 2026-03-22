@@ -64,6 +64,25 @@ class AlertDispatchServiceSpec extends Specification {
                 .build()
     }
 
+    private AlertAggregationService.AggregationResult buildAggregationResult(Map overrides = [:]) {
+        def defaults = [
+                aggregateKey: "flow-a:node-a",
+                alertType   : AlertType.NODE_FAILED,
+                count       : 2,
+                bucketStart : LocalDateTime.of(2026, 3, 22, 10, 0),
+                bucketEnd   : LocalDateTime.of(2026, 3, 22, 10, 5)
+        ]
+        def merged = defaults + overrides
+
+        new AlertAggregationService.AggregationResult(
+                merged.aggregateKey as String,
+                merged.alertType as AlertType,
+                merged.count as Integer,
+                merged.bucketStart as LocalDateTime,
+                merged.bucketEnd as LocalDateTime
+        )
+    }
+
     def "dispatch retries within strict upper bound isolates channel failures and logs each attempt"() {
         given:
         def webhook = buildChannel(id: 1L, channelType: AlertChannelType.WEBHOOK)
@@ -147,6 +166,30 @@ class AlertDispatchServiceSpec extends Specification {
 
         then:
         1 * webhookSender.send(channel, _ as AlertEvent) >> { throw new RuntimeException("boom") }
+        1 * alertDispatchLogRepository.save(_ as AlertDispatchLog)
+    }
+
+    def "dispatchAggregated uses aggregation result alert type"() {
+        given:
+        def channel = buildChannel(id: 31L, channelType: AlertChannelType.WEBHOOK)
+        def sentEvents = []
+
+        and:
+        alertChannelRepository.findEnabled() >> [channel]
+        webhookSender.supports(AlertChannelType.WEBHOOK) >> true
+        emailSender.supports(AlertChannelType.WEBHOOK) >> false
+        webhookSender.send(channel, _ as AlertEvent) >> { AlertChannel c, AlertEvent event ->
+            sentEvents << event
+            "ok"
+        }
+
+        when:
+        alertDispatchService.dispatchAggregated(buildAggregationResult(alertType: AlertType.SLOW_NODE, aggregateKey: "agg-key"))
+
+        then:
+        sentEvents.size() == 1
+        sentEvents[0].alertType == AlertType.SLOW_NODE
+        sentEvents[0].aggregateKey == "agg-key"
         1 * alertDispatchLogRepository.save(_ as AlertDispatchLog)
     }
 
