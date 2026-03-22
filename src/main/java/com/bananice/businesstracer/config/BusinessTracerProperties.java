@@ -44,5 +44,30 @@ public class BusinessTracerProperties {
          * Fixed delay(ms) for polling business_alert_config_version.
          */
         private Long configSyncFixedDelayMs = 5000L;
+
+        /**
+         * Slow node threshold in milliseconds.
+         */
+        private Long slowNodeThresholdMs = 2000L;
+
+        /**
+         * Aggregation bucket size in minutes.
+         */
+        private Integer aggregationBucketMinutes = 5;
+
+        /**
+         * Fixed delay(ms) for aggregation flush scheduling.
+         */
+        private Long aggregationFlushFixedDelayMs = 60000L;
+
+        /**
+         * Per dispatch attempt timeout in milliseconds.
+         */
+        private Long dispatchAttemptTimeoutMs = 1000L;
+
+        /**
+         * Max retry times for each channel dispatch.
+         */
+        private Integer dispatchMaxRetries = 1;
     }
 }

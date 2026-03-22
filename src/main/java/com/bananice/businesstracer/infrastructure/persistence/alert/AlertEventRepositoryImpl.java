@@ -1,6 +1,7 @@
 package com.bananice.businesstracer.infrastructure.persistence.alert;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.bananice.businesstracer.domain.model.alert.AlertEvent;
 import com.bananice.businesstracer.domain.model.alert.AlertStatus;
 import com.bananice.businesstracer.domain.model.alert.AlertType;
@@ -61,6 +62,42 @@ public class AlertEventRepositoryImpl implements AlertEventRepository {
         return alertEventMapper.selectCount(query);
     }
 
+    @Override
+    public AlertEvent findOpenFlowStuck(String flowCode, String businessId) {
+        QueryWrapper<AlertEventPO> query = new QueryWrapper<>();
+        query.eq("alert_type", AlertType.FLOW_STUCK.name())
+                .eq("status", AlertStatus.NEW.name())
+                .eq("flow_code", flowCode)
+                .eq("business_id", businessId)
+                .orderByDesc("last_occur_time")
+                .last("LIMIT 1");
+        return toDomain(alertEventMapper.selectOne(query));
+    }
+
+    @Override
+    public void updateOpenFlowStuck(Long eventId, String message, LocalDateTime occurredAt) {
+        if (eventId == null) {
+            return;
+        }
+        UpdateWrapper<AlertEventPO> update = new UpdateWrapper<>();
+        update.eq("id", eventId)
+                .set("content", message)
+                .set("last_occur_time", occurredAt);
+        alertEventMapper.update(null, update);
+    }
+
+    @Override
+    public void closeFlowStuck(Long eventId, LocalDateTime closedAt) {
+        if (eventId == null) {
+            return;
+        }
+        UpdateWrapper<AlertEventPO> update = new UpdateWrapper<>();
+        update.eq("id", eventId)
+                .set("status", AlertStatus.SENT.name())
+                .set("last_occur_time", closedAt);
+        alertEventMapper.update(null, update);
+    }
+
     private QueryWrapper<AlertEventPO> buildQuery(LocalDateTime startTime, LocalDateTime endTime,
                                                   AlertType alertType, AlertStatus status,
                                                   String flowCode, String nodeCode, String businessId) {
@@ -98,7 +135,7 @@ public class AlertEventRepositoryImpl implements AlertEventRepository {
         alertEvent.setAlertType(po.getAlertType() == null ? null : AlertType.valueOf(po.getAlertType()));
         alertEvent.setStatus(po.getStatus() == null ? null : AlertStatus.valueOf(po.getStatus()));
         alertEvent.setMessage(po.getContent());
-        alertEvent.setOccurredAt(po.getCreateTime());
+        alertEvent.setOccurredAt(po.getLastOccurTime() == null ? po.getCreateTime() : po.getLastOccurTime());
         return alertEvent;
     }
 }

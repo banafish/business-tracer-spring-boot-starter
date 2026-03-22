@@ -31,4 +31,19 @@ public interface AlertEventRepository {
     long count(LocalDateTime startTime, LocalDateTime endTime,
                AlertType alertType, AlertStatus status,
                String flowCode, String nodeCode, String businessId);
+
+    /**
+     * Find an open FLOW_STUCK event by flow and business id.
+     */
+    AlertEvent findOpenFlowStuck(String flowCode, String businessId);
+
+    /**
+     * Update latest occurrence info of an open FLOW_STUCK event.
+     */
+    void updateOpenFlowStuck(Long eventId, String message, LocalDateTime occurredAt);
+
+    /**
+     * Close an open FLOW_STUCK event.
+     */
+    void closeFlowStuck(Long eventId, LocalDateTime closedAt);
 }

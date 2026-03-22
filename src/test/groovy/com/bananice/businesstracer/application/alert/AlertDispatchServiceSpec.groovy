@@ -75,18 +75,14 @@ class AlertDispatchServiceSpec extends Specification {
         emailSender.supports(AlertChannelType.WEBHOOK) >> false
         emailSender.supports(AlertChannelType.EMAIL) >> true
 
-        and: "webhook always fails, email succeeds"
-        webhookSender.send(webhook, _ as AlertEvent) >> { throw new RuntimeException("boom") }
-        emailSender.send(email, _ as AlertEvent) >> "ok"
-
         when:
         alertDispatchService.dispatchRealtime(buildEvent())
 
         then: "webhook attempts are capped by retry upper bound (1 retry => 2 attempts)"
-        2 * webhookSender.send(webhook, _ as AlertEvent)
+        2 * webhookSender.send(webhook, _ as AlertEvent) >> { throw new RuntimeException("boom") }
 
         and: "email channel still dispatches despite webhook failures"
-        1 * emailSender.send(email, _ as AlertEvent)
+        1 * emailSender.send(email, _ as AlertEvent) >> "ok"
 
         and: "a dispatch log is written for each attempt"
         3 * alertDispatchLogRepository.save(_)

@@ -15,6 +15,7 @@ public class AlertEvent {
     private Long ruleId;
     private AlertType alertType;
     private AlertStatus status;
+    private String aggregateKey;
     private String businessId;
     private String flowCode;
     private String nodeCode;
