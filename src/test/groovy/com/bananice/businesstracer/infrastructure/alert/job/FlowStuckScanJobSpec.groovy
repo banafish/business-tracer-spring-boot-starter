@@ -73,4 +73,33 @@ class FlowStuckScanJobSpec extends Specification {
         1 * alertEvaluateService.closeFlowStuckByStatus("flow-c", "biz-3", "FAILED", null)
         0 * _
     }
+
+    def "scan job continues processing remaining records when alert calls throw"() {
+        given:
+        properties.alert.flowStuckThresholdMs = 120000L
+        properties.alert.flowStuckScanBatchSize = 10
+
+        when:
+        flowStuckScanJob.scanAndPublishFlowStuck()
+
+        then:
+        1 * flowLogService.findStuckInProgressFlows(_ as Duration, 10) >> [
+                buildFlowLog(flowCode: "flow-a", businessId: "biz-1", status: "IN_PROGRESS"),
+                buildFlowLog(flowCode: "flow-b", businessId: "biz-2", status: "IN_PROGRESS")
+        ]
+        1 * flowLogService.findStaleFlows(_ as Duration, 10) >> [
+                buildFlowLog(flowCode: "flow-c", businessId: "biz-3", status: "COMPLETED"),
+                buildFlowLog(flowCode: "flow-d", businessId: "biz-4", status: "FAILED")
+        ]
+
+        1 * alertEvaluateService.openOrUpdateFlowStuck("flow-a", "biz-1", null, null) >> {
+            throw new RuntimeException("open failed")
+        }
+        1 * alertEvaluateService.openOrUpdateFlowStuck("flow-b", "biz-2", null, null)
+        1 * alertEvaluateService.closeFlowStuckByStatus("flow-c", "biz-3", "COMPLETED", null) >> {
+            throw new RuntimeException("close failed")
+        }
+        1 * alertEvaluateService.closeFlowStuckByStatus("flow-d", "biz-4", "FAILED", null)
+        0 * _
+    }
 }
