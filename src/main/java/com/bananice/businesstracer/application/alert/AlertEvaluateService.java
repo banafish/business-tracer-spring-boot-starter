@@ -1,6 +1,7 @@
 package com.bananice.businesstracer.application.alert;
 
 import com.bananice.businesstracer.domain.model.NodeLog;
+import com.bananice.businesstracer.domain.model.TraceStatus;
 import com.bananice.businesstracer.domain.model.alert.AlertEvent;
 import com.bananice.businesstracer.domain.model.alert.AlertStatus;
 import com.bananice.businesstracer.domain.model.alert.AlertType;
@@ -79,6 +80,16 @@ public class AlertEvaluateService {
             return;
         }
         alertEventRepository.closeFlowStuck(openEvent.getId(), closedAt == null ? LocalDateTime.now() : closedAt);
+    }
+
+    public void closeFlowStuckByStatus(String flowCode, String businessId, String status, LocalDateTime closedAt) {
+        if (!StringUtils.hasText(status)) {
+            return;
+        }
+        if (TraceStatus.COMPLETED.getValue().equalsIgnoreCase(status)
+                || TraceStatus.FAILED.getValue().equalsIgnoreCase(status)) {
+            closeFlowStuck(flowCode, businessId, closedAt);
+        }
     }
 
     private AlertEvent buildNodeEvent(NodeLog nodeLog, AlertType alertType, String message) {

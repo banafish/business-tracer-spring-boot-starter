@@ -2,6 +2,7 @@ package com.bananice.businesstracer.application.alert
 
 import com.bananice.businesstracer.domain.model.alert.AlertChannel
 import com.bananice.businesstracer.domain.model.alert.AlertChannelType
+import com.bananice.businesstracer.domain.model.alert.AlertDispatchLog
 import com.bananice.businesstracer.domain.model.alert.AlertEvent
 import com.bananice.businesstracer.domain.model.alert.AlertStatus
 import com.bananice.businesstracer.domain.model.alert.AlertType
@@ -86,6 +87,43 @@ class AlertDispatchServiceSpec extends Specification {
 
         and: "a dispatch log is written for each attempt"
         3 * alertDispatchLogRepository.save(_)
+    }
+
+    def "dispatch timeout is bounded by retry cap and next channel still executes"() {
+        given:
+        def webhook = buildChannel(id: 11L, channelType: AlertChannelType.WEBHOOK)
+        def email = buildChannel(id: 12L, channelType: AlertChannelType.EMAIL)
+        def savedLogs = []
+
+        and:
+        alertChannelRepository.findEnabled() >> [webhook, email]
+        webhookSender.supports(AlertChannelType.WEBHOOK) >> true
+        webhookSender.supports(AlertChannelType.EMAIL) >> false
+        emailSender.supports(AlertChannelType.WEBHOOK) >> false
+        emailSender.supports(AlertChannelType.EMAIL) >> true
+
+        and: "capture all dispatch logs"
+        alertDispatchLogRepository.save(_ as AlertDispatchLog) >> { AlertDispatchLog log ->
+            savedLogs << log
+            log
+        }
+
+        when:
+        alertDispatchService.dispatchRealtime(buildEvent())
+
+        then: "retry is capped to 2 attempts total when maxRetries=1"
+        2 * webhookSender.send(webhook, _ as AlertEvent) >> {
+            Thread.sleep(120L)
+            "late-response"
+        }
+
+        and: "next channel still executes after webhook timeout failures"
+        1 * emailSender.send(email, _ as AlertEvent) >> "ok"
+
+        and: "failed timeout attempts and successful isolation are both logged"
+        savedLogs.size() == 3
+        savedLogs.count { it.channelId == 11L && it.status == AlertStatus.FAILED && it.response?.contains("attempt timeout") } == 2
+        savedLogs.count { it.channelId == 12L && it.status == AlertStatus.SENT } == 1
     }
 
     def "silence window supports cross midnight and edge boundaries"() {

@@ -117,4 +117,22 @@ class AlertEvaluateServiceSpec extends Specification {
         1 * alertEventRepository.findOpenFlowStuck("flow-a", "biz-1") >> openEvent
         1 * alertEventRepository.closeFlowStuck(201L, now.plusMinutes(5))
     }
+
+    def "flow stuck closes by flow status transitions to COMPLETED or FAILED"() {
+        given:
+        def openEvent = buildOpenFlowStuck(id: 301L, flowCode: "flow-a", businessId: "biz-1")
+        def completedAt = LocalDateTime.of(2026, 3, 22, 11, 0)
+        def failedAt = completedAt.plusMinutes(1)
+
+        when:
+        alertEvaluateService.closeFlowStuckByStatus("flow-a", "biz-1", "COMPLETED", completedAt)
+        alertEvaluateService.closeFlowStuckByStatus("flow-a", "biz-1", "FAILED", failedAt)
+        alertEvaluateService.closeFlowStuckByStatus("flow-a", "biz-1", "IN_PROGRESS", failedAt.plusMinutes(1))
+
+        then:
+        2 * alertEventRepository.findOpenFlowStuck("flow-a", "biz-1") >> openEvent
+        1 * alertEventRepository.closeFlowStuck(301L, completedAt)
+        1 * alertEventRepository.closeFlowStuck(301L, failedAt)
+        0 * alertEventRepository.closeFlowStuck(301L, failedAt.plusMinutes(1))
+    }
 }
