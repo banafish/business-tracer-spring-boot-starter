@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>告警中心 - Business Tracer</title>
+    <link rel="stylesheet" href="common.css">
+    <style>
+        .alert-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--gray-200);
+        }
+
+        .alert-tab {
+            padding: 12px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 600;
+            color: var(--gray-500);
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+        }
+
+        .alert-tab:hover {
+            color: var(--gray-700);
+        }
+
+        .alert-tab.active {
+            color: var(--gradient-start);
+            border-bottom-color: var(--gradient-start);
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        .rule-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .scope-tree {
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            padding: 12px;
+            max-height: 420px;
+            overflow: auto;
+            background: var(--gray-100);
+        }
+
+        .scope-item {
+            padding: 8px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-bottom: 6px;
+            border: 1px solid transparent;
+            font-size: 0.92em;
+        }
+
+        .scope-item:hover {
+            background: white;
+            border-color: var(--gray-300);
+        }
+
+        .scope-item.active {
+            background: #eef5ff;
+            border-color: var(--primary);
+        }
+
+        .scope-item-level-0 {
+            font-weight: 700;
+        }
+
+        .scope-item-level-1 {
+            margin-left: 14px;
+        }
+
+        .scope-item-level-2 {
+            margin-left: 28px;
+        }
+
+        .scope-title {
+            font-size: 1.05em;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .table-wrap {
+            overflow: auto;
+        }
+
+        .mono {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+        }
+
+        .panel-note {
+            font-size: 12px;
+            color: var(--gray-500);
+            margin-bottom: 12px;
+        }
+
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .history-grid {
+            display: grid;
+            grid-template-columns: 1.3fr 1fr;
+            gap: 16px;
+            align-items: start;
+        }
+
+        .detail-box {
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            background: var(--gray-100);
+            min-height: 360px;
+            padding: 12px;
+        }
+
+        .dispatch-item {
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .manual-checklist {
+            margin-top: 8px;
+            padding-left: 18px;
+            color: var(--gray-700);
+            font-size: 0.9em;
+        }
+
+        .manual-checklist li {
+            margin-bottom: 4px;
+        }
+
+        @media (max-width: 1199px) {
+            .rule-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .history-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .filter-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 767px) {
+            .alert-tabs {
+                overflow-x: auto;
+                white-space: nowrap;
+            }
+
+            .filter-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-layout">
+        <main class="main-content">
+            <div class="page-header">
+                <h1 class="page-title">🚨 告警中心</h1>
+                <p class="page-subtitle">规则、通道、静默窗口与告警历史统一管理</p>
+            </div>
+
+            <div class="card" style="margin-bottom: 16px;">
+                <div class="card-title">手工验证清单</div>
+                <ul class="manual-checklist">
+                    <li>Rules tab: load tree and save global/flow/node rule</li>
+                    <li>Channels tab: create webhook channel and test-send</li>
+                    <li>Silence tab: edit silence windows and persist</li>
+                    <li>History tab: filter by alert type/time and open dispatch log detail</li>
+                </ul>
+            </div>
+
+            <div class="alert-tabs">
+                <button class="alert-tab active" data-tab="rules">规则</button>
+                <button class="alert-tab" data-tab="channels">通道</button>
+                <button class="alert-tab" data-tab="silence">静默</button>
+                <button class="alert-tab" data-tab="history">历史</button>
+            </div>
+
+            <section id="tab-rules" class="tab-panel active">
+                <div class="rule-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">规则作用域树</div>
+                            <button class="btn btn-secondary btn-sm" id="ruleReloadBtn">刷新</button>
+                        </div>
+                        <div class="panel-note">按优先级：NODE(flow+node) &gt; FLOW(flow) &gt; GLOBAL</div>
+                        <div id="ruleScopeTree" class="scope-tree"></div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title" id="ruleFormTitle">编辑规则</div>
+                        </div>
+                        <form id="ruleForm">
+                            <input type="hidden" id="ruleScopeType">
+                            <input type="hidden" id="ruleScopeRef">
+                            <div class="form-group">
+                                <label class="form-label" for="ruleName">规则名称 *</label>
+                                <input id="ruleName" class="form-control" placeholder="例如：支付节点失败" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="ruleAlertType">告警类型 *</label>
+                                <select id="ruleAlertType" class="form-control" required>
+                                    <option value="NODE_FAILED">NODE_FAILED</option>
+                                    <option value="SLOW_NODE">SLOW_NODE</option>
+                                    <option value="FLOW_STUCK">FLOW_STUCK</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="ruleFlowCode">Flow Code（NODE scope 必填）</label>
+                                <input id="ruleFlowCode" class="form-control" placeholder="例如：checkout">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="ruleEnabled">启用状态</label>
+                                <select id="ruleEnabled" class="form-control">
+                                    <option value="true">启用</option>
+                                    <option value="false">禁用</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">保存规则</button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <section id="tab-channels" class="tab-panel">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">告警通道</div>
+                        <button class="btn btn-secondary" id="channelCreateBtn">+ 新建通道</button>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>名称</th>
+                                    <th>类型</th>
+                                    <th>目标</th>
+                                    <th>启用</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="channelTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top: 16px;">
+                    <div class="card-header">
+                        <div class="card-title" id="channelFormTitle">新建/编辑通道</div>
+                    </div>
+                    <form id="channelForm">
+                        <input type="hidden" id="channelId">
+                        <div class="form-group">
+                            <label class="form-label" for="channelName">通道名称 *</label>
+                            <input id="channelName" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="channelType">通道类型 *</label>
+                            <select id="channelType" class="form-control" required>
+                                <option value="WEBHOOK">WEBHOOK</option>
+                                <option value="WECOM">WECOM</option>
+                                <option value="DINGTALK">DINGTALK</option>
+                                <option value="EMAIL">EMAIL</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="channelTarget">目标地址/配置 *</label>
+                            <textarea id="channelTarget" class="form-control mono" rows="4" required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="channelEnabled">启用状态</label>
+                            <select id="channelEnabled" class="form-control">
+                                <option value="true">启用</option>
+                                <option value="false">禁用</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">保存通道</button>
+                    </form>
+                </div>
+            </section>
+
+            <section id="tab-silence" class="tab-panel">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">静默窗口配置（本地浏览器）</div>
+                    </div>
+                    <div class="panel-note">当前后端未提供静默窗口持久化 API。此处以 localStorage 保存，便于手工验证与后续接入。</div>
+                    <form id="silenceForm">
+                        <div class="form-group">
+                            <label class="form-label" for="silenceEnabled">是否启用静默</label>
+                            <select id="silenceEnabled" class="form-control">
+                                <option value="true">启用</option>
+                                <option value="false">禁用</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="silenceStart">开始时间</label>
+                            <input id="silenceStart" type="time" class="form-control" value="23:00">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="silenceEnd">结束时间</label>
+                            <input id="silenceEnd" type="time" class="form-control" value="07:00">
+                        </div>
+                        <button type="submit" class="btn btn-primary">保存静默窗口</button>
+                    </form>
+
+                    <div class="card" style="margin-top: 12px; background: var(--gray-100);">
+                        <div class="card-title" style="margin-bottom: 8px;">当前配置</div>
+                        <pre id="silencePreview" class="mono" style="white-space: pre-wrap;"></pre>
+                    </div>
+                </div>
+            </section>
+
+            <section id="tab-history" class="tab-panel">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">告警历史</div>
+                    </div>
+                    <div class="filter-grid">
+                        <input id="historyFlowCode" class="form-control" placeholder="flowCode">
+                        <input id="historyNodeCode" class="form-control" placeholder="nodeCode">
+                        <input id="historyBusinessId" class="form-control" placeholder="businessId">
+                        <select id="historyAlertType" class="form-control">
+                            <option value="">全部类型</option>
+                            <option value="NODE_FAILED">NODE_FAILED</option>
+                            <option value="SLOW_NODE">SLOW_NODE</option>
+                            <option value="FLOW_STUCK">FLOW_STUCK</option>
+                        </select>
+                        <select id="historyStatus" class="form-control">
+                            <option value="">全部状态</option>
+                            <option value="NEW">NEW</option>
+                            <option value="SENT">SENT</option>
+                            <option value="FAILED">FAILED</option>
+                            <option value="SUPPRESSED">SUPPRESSED</option>
+                        </select>
+                        <input id="historyStartTime" type="datetime-local" class="form-control">
+                        <input id="historyEndTime" type="datetime-local" class="form-control">
+                        <button class="btn btn-primary" id="historySearchBtn" type="button">搜索</button>
+                    </div>
+
+                    <div class="history-grid">
+                        <div>
+                            <div class="table-wrap">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>类型</th>
+                                            <th>状态</th>
+                                            <th>flow/node</th>
+                                            <th>businessId</th>
+                                            <th>时间</th>
+                                            <th>操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="historyTableBody"></tbody>
+                                </table>
+                            </div>
+                            <div class="pagination" id="historyPagination"></div>
+                        </div>
+
+                        <div class="detail-box" id="dispatchLogPanel">
+                            <div class="text-muted">点击“查看投递”加载 dispatch logs</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="sidebar.js"></script>
+    <script src="alerts.js"></script>
+</body>
+
+</html>

@@ -44,33 +44,14 @@ public class AlertDispatchService {
         if (event == null) {
             return;
         }
-        List<AlertChannel> channels = alertChannelRepository.findEnabled();
-        if (channels == null || channels.isEmpty()) {
+        dispatchToChannels(event, alertChannelRepository.findEnabled());
+    }
+
+    public void dispatchToChannel(AlertEvent event, AlertChannel channel) {
+        if (event == null || channel == null) {
             return;
         }
-
-        for (AlertChannel channel : channels) {
-            AlertChannelSender sender = resolveSender(channel);
-            if (sender == null) {
-                continue;
-            }
-            int totalAttempts = Math.max(1, maxRetries + 1);
-            for (int attempt = 0; attempt < totalAttempts; attempt++) {
-                LocalDateTime dispatchTime = LocalDateTime.now();
-                try {
-                    long started = System.currentTimeMillis();
-                    String response = sender.send(channel, event);
-                    long elapsed = System.currentTimeMillis() - started;
-                    if (elapsed > maxAttemptTimeoutMs) {
-                        throw new TimeoutException("attempt timeout " + elapsed + "ms");
-                    }
-                    writeLog(event, channel, AlertStatus.SENT, response, dispatchTime, attempt);
-                    break;
-                } catch (Exception ex) {
-                    writeLog(event, channel, AlertStatus.FAILED, ex.getMessage(), dispatchTime, attempt);
-                }
-            }
-        }
+        dispatchToChannels(event, java.util.Collections.singletonList(channel));
     }
 
     public void dispatchAggregated(AlertAggregationService.AggregationResult aggregationResult) {
@@ -103,6 +84,35 @@ public class AlertDispatchService {
             return !now.isBefore(start) && now.isBefore(end);
         }
         return !now.isBefore(start) || now.isBefore(end);
+    }
+
+    private void dispatchToChannels(AlertEvent event, List<AlertChannel> channels) {
+        if (channels == null || channels.isEmpty()) {
+            return;
+        }
+
+        for (AlertChannel channel : channels) {
+            AlertChannelSender sender = resolveSender(channel);
+            if (sender == null) {
+                continue;
+            }
+            int totalAttempts = Math.max(1, maxRetries + 1);
+            for (int attempt = 0; attempt < totalAttempts; attempt++) {
+                LocalDateTime dispatchTime = LocalDateTime.now();
+                try {
+                    long started = System.currentTimeMillis();
+                    String response = sender.send(channel, event);
+                    long elapsed = System.currentTimeMillis() - started;
+                    if (elapsed > maxAttemptTimeoutMs) {
+                        throw new TimeoutException("attempt timeout " + elapsed + "ms");
+                    }
+                    writeLog(event, channel, AlertStatus.SENT, response, dispatchTime, attempt);
+                    break;
+                } catch (Exception ex) {
+                    writeLog(event, channel, AlertStatus.FAILED, ex.getMessage(), dispatchTime, attempt);
+                }
+            }
+        }
     }
 
     private AlertChannelSender resolveSender(AlertChannel channel) {

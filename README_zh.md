@@ -59,6 +59,11 @@ mvn clean install
 - `business_flow_log`: 顶层的流程追踪记录日志。
 - `business_trace_node`: 追踪流程中的每一个过程步骤（即节点），包含参数、执行耗时、异常及状态信息。
 - `business_trace_detail`: 追踪位于节点内部生成的详细日志与错误记录。
+- `business_alert_rule`: 告警规则表，按 `GLOBAL` / `FLOW` / `NODE` 作用域存储规则。
+- `business_alert_channel`: 告警通道表，存储 WEBHOOK/WECOM/DINGTALK/EMAIL 通道。
+- `business_alert_event`: 告警事件表，记录运行时评估产出的告警事件。
+- `business_alert_dispatch_log`: 告警投递日志表，记录事件在各通道的投递尝试。
+- `business_alert_config_version`: 告警配置版本表，用于多实例配置缓存同步。
 
 ### 4. 配置文件 (Configuration)
 
@@ -73,6 +78,24 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
   application:
     name: your-service-name
+
+business-tracer:
+  alert:
+    # 运行时阈值
+    slow-node-threshold-ms: 2000
+    flow-stuck-threshold-ms: 300000
+
+    # 调度开关与周期
+    scheduling-enabled: true
+    config-sync-fixed-delay-ms: 5000
+    flow-stuck-scan-fixed-delay-ms: 60000
+    aggregation-flush-fixed-delay-ms: 60000
+    history-cleanup-fixed-delay-ms: 3600000
+
+    # 留存与投递策略
+    retention-days: 30
+    dispatch-attempt-timeout-ms: 1000
+    dispatch-max-retries: 1
 ```
 
 ## 使用指南 (Usage)
@@ -143,7 +166,31 @@ public class OrderService {
 
 - **API 接口 (API Endpoints)**: 该 UI 内部是通过拉取类似于 `/business-tracer/api/flow-logs` 和 `/business-tracer/trace?businessId=...` 等端点接口来进行数据的通讯交互的。
 
-### 4. 分布式追踪 (Distributed Tracing)
+### 4. 告警中心（规则 / 通道 / 静默 / 历史）
+
+Business Tracer 内置了告警中心页面，用于运维侧统一管理规则、通道和历史告警。
+
+访问地址：
+
+**`http://localhost:8080/business-tracer/alerts.html`**
+
+核心页签：
+- **规则（Rules）**：按 `NODE(flow+node) > FLOW(flow) > GLOBAL` 优先级配置规则。
+- **通道（Channels）**：维护告警通道并执行 test-send 测试发送。
+- **静默（Silence）**：维护静默窗口（当前实现保存在浏览器 localStorage）。
+- **历史（History）**：按类型/状态/时间筛选告警事件，并查看 dispatch logs。
+
+告警中心使用的主要 API：
+- `GET /business-tracer/api/alerts/rules`
+- `PUT /business-tracer/api/alerts/rules/{scopeType}/{scopeCode}`
+- `GET /business-tracer/api/alerts/channels`
+- `POST /business-tracer/api/alerts/channels`
+- `PUT /business-tracer/api/alerts/channels/{id}`
+- `POST /business-tracer/api/alerts/channels/{id}/test-send`
+- `GET /business-tracer/api/alerts/events`
+- `GET /business-tracer/api/alerts/events/{id}/dispatch-logs`
+
+### 5. 分布式追踪 (Distributed Tracing)
 
 如果在代码里通过 HTTP 调用下级的系统服务，本组件会自动使用标准 Header 机制来继续传递追踪上下文。
 

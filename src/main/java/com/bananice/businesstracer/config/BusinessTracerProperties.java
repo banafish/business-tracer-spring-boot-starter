@@ -76,6 +76,16 @@ public class BusinessTracerProperties {
         private Long aggregationFlushFixedDelayMs = 60000L;
 
         /**
+         * Retention days for alert events and dispatch logs.
+         */
+        private Integer retentionDays = 30;
+
+        /**
+         * Fixed delay(ms) for alert history cleanup scheduling.
+         */
+        private Long historyCleanupFixedDelayMs = 3600000L;
+
+        /**
          * Per dispatch attempt timeout in milliseconds.
          */
         private Long dispatchAttemptTimeoutMs = 1000L;

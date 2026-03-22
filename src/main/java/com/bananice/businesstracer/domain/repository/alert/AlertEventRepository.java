@@ -38,6 +38,11 @@ public interface AlertEventRepository {
                String flowCode, String nodeCode, String businessId);
 
     /**
+     * Find event by id.
+     */
+    AlertEvent findById(Long id);
+
+    /**
      * Find an open FLOW_STUCK event by flow and business id.
      */
     AlertEvent findOpenFlowStuck(String flowCode, String businessId);
@@ -51,4 +56,9 @@ public interface AlertEventRepository {
      * Close an open FLOW_STUCK event.
      */
     void closeFlowStuck(Long eventId, LocalDateTime closedAt);
+
+    /**
+     * Delete historical events and dispatch logs before cutoff time.
+     */
+    void deleteOlderThan(LocalDateTime cutoffTime);
 }

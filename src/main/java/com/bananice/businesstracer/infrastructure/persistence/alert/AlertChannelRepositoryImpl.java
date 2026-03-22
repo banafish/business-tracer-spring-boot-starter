@@ -28,10 +28,20 @@ public class AlertChannelRepositoryImpl implements AlertChannelRepository {
 
         AlertChannelPO po = new AlertChannelPO();
         BeanUtils.copyProperties(alertChannel, po);
-        po.setChannelCode(UUID.randomUUID().toString().replace("-", ""));
         po.setChannelType(alertChannel.getChannelType() == null ? null : alertChannel.getChannelType().name());
         po.setChannelName(alertChannel.getName());
         po.setConfigJson(alertChannel.getTarget());
+
+        if (alertChannel.getId() != null) {
+            AlertChannelPO existing = alertChannelMapper.selectById(alertChannel.getId());
+            if (existing != null) {
+                po.setChannelCode(existing.getChannelCode());
+            }
+            alertChannelMapper.updateById(po);
+            return;
+        }
+
+        po.setChannelCode(UUID.randomUUID().toString().replace("-", ""));
         alertChannelMapper.insert(po);
     }
 
@@ -42,6 +52,21 @@ public class AlertChannelRepositoryImpl implements AlertChannelRepository {
         query.orderByAsc("id");
 
         return alertChannelMapper.selectList(query).stream().map(this::toDomain).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<AlertChannel> findAll() {
+        QueryWrapper<AlertChannelPO> query = new QueryWrapper<>();
+        query.orderByAsc("id");
+        return alertChannelMapper.selectList(query).stream().map(this::toDomain).collect(Collectors.toList());
+    }
+
+    @Override
+    public AlertChannel findById(Long id) {
+        if (id == null) {
+            return null;
+        }
+        return toDomain(alertChannelMapper.selectById(id));
     }
 
     private AlertChannel toDomain(AlertChannelPO po) {

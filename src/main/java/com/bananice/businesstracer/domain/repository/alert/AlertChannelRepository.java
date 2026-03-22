@@ -18,4 +18,14 @@ public interface AlertChannelRepository {
      * Find enabled alert channels.
      */
     List<AlertChannel> findEnabled();
+
+    /**
+     * Find all alert channels.
+     */
+    List<AlertChannel> findAll();
+
+    /**
+     * Find channel by id.
+     */
+    AlertChannel findById(Long id);
 }

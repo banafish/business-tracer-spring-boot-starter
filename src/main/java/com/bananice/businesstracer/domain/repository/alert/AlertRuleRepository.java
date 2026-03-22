@@ -2,6 +2,7 @@ package com.bananice.businesstracer.domain.repository.alert;
 
 import com.bananice.businesstracer.domain.model.alert.AlertRule;
 import com.bananice.businesstracer.domain.model.alert.AlertScopeType;
+import com.bananice.businesstracer.domain.model.alert.AlertType;
 
 import java.util.List;
 
@@ -24,4 +25,9 @@ public interface AlertRuleRepository {
      * Find all rules.
      */
     List<AlertRule> findAll();
+
+    /**
+     * Find all rules for the specified alert type.
+     */
+    List<AlertRule> findByAlertType(AlertType alertType);
 }

@@ -58,6 +58,10 @@ public class AlertConfigCacheService {
         return null;
     }
 
+    public List<AlertRule> listAllRules() {
+        return new ArrayList<>(localCacheRef.get());
+    }
+
     public void syncIfVersionChanged() {
         Long publishedVersion = alertConfigVersionRepository.getPublishedVersion();
         if (publishedVersion == null || publishedVersion.equals(localPublishedVersion)) {

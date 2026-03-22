@@ -6,6 +6,7 @@ import com.bananice.businesstracer.domain.model.alert.AlertEvent;
 import com.bananice.businesstracer.domain.model.alert.AlertStatus;
 import com.bananice.businesstracer.domain.model.alert.AlertType;
 import com.bananice.businesstracer.domain.repository.alert.AlertEventRepository;
+import com.bananice.businesstracer.infrastructure.persistence.mapper.alert.AlertDispatchLogMapper;
 import com.bananice.businesstracer.infrastructure.persistence.mapper.alert.AlertEventMapper;
 import com.bananice.businesstracer.infrastructure.persistence.po.alert.AlertEventPO;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ import java.util.stream.Collectors;
 public class AlertEventRepositoryImpl implements AlertEventRepository {
 
     private final AlertEventMapper alertEventMapper;
+    private final AlertDispatchLogMapper alertDispatchLogMapper;
 
     @Override
     public void save(AlertEvent alertEvent) {
@@ -73,6 +75,14 @@ public class AlertEventRepositoryImpl implements AlertEventRepository {
     }
 
     @Override
+    public AlertEvent findById(Long id) {
+        if (id == null) {
+            return null;
+        }
+        return toDomain(alertEventMapper.selectById(id));
+    }
+
+    @Override
     public AlertEvent findOpenFlowStuck(String flowCode, String businessId) {
         QueryWrapper<AlertEventPO> query = new QueryWrapper<>();
         query.eq("alert_type", AlertType.FLOW_STUCK.name())
@@ -106,6 +116,30 @@ public class AlertEventRepositoryImpl implements AlertEventRepository {
                 .set("status", AlertStatus.SENT.name())
                 .set("last_occur_time", closedAt);
         alertEventMapper.update(null, update);
+    }
+
+    @Override
+    public void deleteOlderThan(LocalDateTime cutoffTime) {
+        if (cutoffTime == null) {
+            return;
+        }
+
+        QueryWrapper<AlertEventPO> oldEventQuery = new QueryWrapper<>();
+        oldEventQuery.lt("create_time", cutoffTime);
+        List<AlertEventPO> oldEvents = alertEventMapper.selectList(oldEventQuery);
+        if (oldEvents.isEmpty()) {
+            return;
+        }
+
+        List<Long> oldEventIds = oldEvents.stream().map(AlertEventPO::getId).collect(Collectors.toList());
+
+        QueryWrapper<AlertEventPO> eventDeleteQuery = new QueryWrapper<>();
+        eventDeleteQuery.lt("create_time", cutoffTime);
+        QueryWrapper<com.bananice.businesstracer.infrastructure.persistence.po.alert.AlertDispatchLogPO> dispatchDeleteQuery = new QueryWrapper<>();
+        dispatchDeleteQuery.in("event_id", oldEventIds);
+
+        alertDispatchLogMapper.delete(dispatchDeleteQuery);
+        alertEventMapper.delete(eventDeleteQuery);
     }
 
     private QueryWrapper<AlertEventPO> buildQuery(LocalDateTime startTime, LocalDateTime endTime,

@@ -59,6 +59,11 @@ Execute the initialization script (`sql/init.sql`) to create the necessary table
 - `business_flow_log`: Top level flow tracking logs.
 - `business_trace_node`: Tracks each step (node) in the flow, including parameters, execution time, exceptions, and status.
 - `business_trace_detail`: Tracks internal node details and errors.
+- `business_alert_rule`: Alert rules by scope (`GLOBAL`/`FLOW`/`NODE`).
+- `business_alert_channel`: Alert delivery channels (WEBHOOK/WECOM/DINGTALK/EMAIL).
+- `business_alert_event`: Alert events produced by runtime evaluation.
+- `business_alert_dispatch_log`: Per-channel dispatch attempts for each event.
+- `business_alert_config_version`: Version marker for alert config cache sync.
 
 ### 4. Configuration
 
@@ -73,6 +78,24 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
   application:
     name: your-service-name
+
+business-tracer:
+  alert:
+    # runtime thresholds
+    slow-node-threshold-ms: 2000
+    flow-stuck-threshold-ms: 300000
+
+    # scheduler switches and intervals
+    scheduling-enabled: true
+    config-sync-fixed-delay-ms: 5000
+    flow-stuck-scan-fixed-delay-ms: 60000
+    aggregation-flush-fixed-delay-ms: 60000
+    history-cleanup-fixed-delay-ms: 3600000
+
+    # retention and dispatch behavior
+    retention-days: 30
+    dispatch-attempt-timeout-ms: 1000
+    dispatch-max-retries: 1
 ```
 
 ## Usage
@@ -143,7 +166,31 @@ The component provides a built-in web interface for visualizing business flows a
 
 - **API Endpoints**: The UI communicates via endpoints like `/business-tracer/api/flow-logs` and `/business-tracer/trace?businessId=...`.
 
-### 4. Distributed Tracing
+### 4. Alert Center (Rules / Channels / Silence / History)
+
+Business Tracer includes an Alert Center UI for operational monitoring and alert management.
+
+Access URL:
+
+**`http://localhost:8080/business-tracer/alerts.html`**
+
+Main tabs:
+- **Rules**: configure scoped alert rules with precedence `NODE(flow+node) > FLOW(flow) > GLOBAL`.
+- **Channels**: manage channel definitions and trigger channel test-send.
+- **Silence**: maintain silence window config (browser local storage in current implementation).
+- **History**: query alert events by type/status/time and inspect dispatch logs.
+
+Core APIs used by the Alert Center:
+- `GET /business-tracer/api/alerts/rules`
+- `PUT /business-tracer/api/alerts/rules/{scopeType}/{scopeCode}`
+- `GET /business-tracer/api/alerts/channels`
+- `POST /business-tracer/api/alerts/channels`
+- `PUT /business-tracer/api/alerts/channels/{id}`
+- `POST /business-tracer/api/alerts/channels/{id}/test-send`
+- `GET /business-tracer/api/alerts/events`
+- `GET /business-tracer/api/alerts/events/{id}/dispatch-logs`
+
+### 5. Distributed Tracing
 
 When making HTTP calls to downstream services, the component automatically handles context propagation via standard mechanisms.
 

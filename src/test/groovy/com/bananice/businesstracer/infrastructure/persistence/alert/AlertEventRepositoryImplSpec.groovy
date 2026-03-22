@@ -1,9 +1,13 @@
 package com.bananice.businesstracer.infrastructure.persistence.alert
 
 import com.bananice.businesstracer.TestApplication
+import com.bananice.businesstracer.config.BusinessTracerProperties
+import com.bananice.businesstracer.domain.model.alert.AlertDispatchLog
 import com.bananice.businesstracer.domain.model.alert.AlertEvent
+import com.bananice.businesstracer.infrastructure.alert.job.AlertHistoryCleanupJob
 import com.bananice.businesstracer.domain.model.alert.AlertStatus
 import com.bananice.businesstracer.domain.model.alert.AlertType
+import com.bananice.businesstracer.domain.repository.alert.AlertDispatchLogRepository
 import com.bananice.businesstracer.domain.repository.alert.AlertEventRepository
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.transaction.annotation.Transactional
@@ -20,6 +24,15 @@ class AlertEventRepositoryImplSpec extends Specification {
     @Resource
     @Subject
     AlertEventRepository alertEventRepository
+
+    @Resource
+    AlertDispatchLogRepository alertDispatchLogRepository
+
+    @Resource
+    AlertHistoryCleanupJob alertHistoryCleanupJob
+
+    @Resource
+    BusinessTracerProperties businessTracerProperties
 
     private AlertEvent buildEvent(Map overrides = [:]) {
         def defaults = [
@@ -48,9 +61,73 @@ class AlertEventRepositoryImplSpec extends Specification {
                 .build()
     }
 
-    def "queryEvents should support filters and pagination"() {
-        given: "five events in time range with mixed attributes"
+    private AlertDispatchLog buildDispatchLog(Map overrides = [:]) {
+        def defaults = [
+                eventId    : null,
+                channelId  : 1L,
+                status     : AlertStatus.SENT,
+                response   : "ok",
+                dispatchTime: LocalDateTime.now(),
+                retryCount : 0
+        ]
+        def merged = defaults + overrides
+
+        AlertDispatchLog.builder()
+                .eventId(merged.eventId as Long)
+                .channelId(merged.channelId as Long)
+                .status(merged.status as AlertStatus)
+                .response(merged.response as String)
+                .dispatchTime(merged.dispatchTime as LocalDateTime)
+                .retryCount(merged.retryCount as Integer)
+                .build()
+    }
+
+    def "cleanup job deletes events and dispatch logs older than retention days"() {
+        given: "old and recent events each with dispatch logs"
         def now = LocalDateTime.now()
+        def oldOccurredAt = now.minusDays(31)
+        def recentOccurredAt = now.minusDays(1)
+
+        def oldEvent = buildEvent(
+                businessId: "biz-old",
+                flowCode: "flow-old",
+                nodeCode: "node-old",
+                message: "old-event",
+                occurredAt: oldOccurredAt
+        )
+        def recentEvent = buildEvent(
+                businessId: "biz-new",
+                flowCode: "flow-new",
+                nodeCode: "node-new",
+                message: "recent-event",
+                occurredAt: recentOccurredAt
+        )
+
+        alertEventRepository.save(oldEvent)
+        alertEventRepository.save(recentEvent)
+
+        def oldPersisted = alertEventRepository.query(null, null, null, null, "flow-old", "node-old", "biz-old", 1, 1).first()
+        def recentPersisted = alertEventRepository.query(null, null, null, null, "flow-new", "node-new", "biz-new", 1, 1).first()
+
+        alertDispatchLogRepository.save(buildDispatchLog(eventId: oldPersisted.id, dispatchTime: oldOccurredAt, response: "old-log"))
+        alertDispatchLogRepository.save(buildDispatchLog(eventId: recentPersisted.id, dispatchTime: recentOccurredAt, response: "recent-log"))
+
+        when: "running cleanup job with 30-day retention"
+        businessTracerProperties.alert.retentionDays = 30
+        alertHistoryCleanupJob.cleanupHistory()
+
+        then: "old event and its dispatch log are removed while recent data remains"
+        alertEventRepository.query(null, null, null, null, "flow-old", "node-old", "biz-old", 1, 10).isEmpty()
+        alertEventRepository.query(null, null, null, null, "flow-new", "node-new", "biz-new", 1, 10).size() == 1
+
+        and:
+        alertDispatchLogRepository.findByEventId(oldPersisted.id).isEmpty()
+        alertDispatchLogRepository.findByEventId(recentPersisted.id).size() == 1
+    }
+
+    def "queryEvents should support filters and pagination"() {
+        given: "five events in an isolated time range with mixed attributes"
+        def now = LocalDateTime.of(2035, 1, 1, 10, 0, 0)
 
         alertEventRepository.save(buildEvent(
                 alertType: AlertType.NODE_FAILED,

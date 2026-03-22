@@ -35,6 +35,13 @@
             text: '可视化编辑',
             href: '/business-tracer/editor.html',
             match: (path) => path.includes('editor.html')
+        },
+        {
+            id: 'alerts',
+            icon: '🚨',
+            text: '告警中心',
+            href: '/business-tracer/alerts.html',
+            match: (path) => path.includes('alerts.html')
         }
     ];
 

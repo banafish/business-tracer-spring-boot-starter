@@ -62,6 +62,16 @@ public class AlertRuleRepositoryImpl implements AlertRuleRepository {
         return alertRuleMapper.selectList(query).stream().map(this::toDomain).collect(Collectors.toList());
     }
 
+    @Override
+    public List<AlertRule> findByAlertType(AlertType alertType) {
+        QueryWrapper<AlertRulePO> query = new QueryWrapper<>();
+        if (alertType != null) {
+            query.eq("alert_type", alertType.name());
+        }
+        query.orderByDesc("id");
+        return alertRuleMapper.selectList(query).stream().map(this::toDomain).collect(Collectors.toList());
+    }
+
     private AlertRulePO selectByScope(AlertScopeType scopeType, String flowCode, String scopeRef) {
         QueryWrapper<AlertRulePO> query = new QueryWrapper<>();
         query.eq("scope_type", scopeType.name());
