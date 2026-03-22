@@ -36,7 +36,7 @@ class FlowStuckScanJobSpec extends Specification {
                 .build()
     }
 
-    def "scan job opens in-progress stale flow and closes terminal stale flows"() {
+    def "scan job uses configured threshold millis as Duration for both queries"() {
         given:
         properties.alert.flowStuckThresholdMs = 120000L
         properties.alert.flowStuckScanBatchSize = 50
@@ -45,11 +45,29 @@ class FlowStuckScanJobSpec extends Specification {
         flowStuckScanJob.scanAndPublishFlowStuck()
 
         then:
-        1 * flowLogService.findStaleFlows(_ as Duration, 50) >> [
-                buildFlowLog(flowCode: "flow-a", businessId: "biz-1", status: "IN_PROGRESS"),
+        1 * flowLogService.findStuckInProgressFlows({ Duration d -> d == Duration.ofMillis(120000L) }, 50) >> []
+        1 * flowLogService.findStaleFlows({ Duration d -> d == Duration.ofMillis(120000L) }, 50) >> []
+        0 * alertEvaluateService._
+        0 * _
+    }
+
+    def "scan job opens stale in-progress flows even when stale terminal batch is full"() {
+        given:
+        properties.alert.flowStuckThresholdMs = 120000L
+        properties.alert.flowStuckScanBatchSize = 2
+
+        when:
+        flowStuckScanJob.scanAndPublishFlowStuck()
+
+        then:
+        1 * flowLogService.findStuckInProgressFlows(_ as Duration, 2) >> [
+                buildFlowLog(flowCode: "flow-a", businessId: "biz-1", status: "IN_PROGRESS")
+        ]
+        1 * flowLogService.findStaleFlows(_ as Duration, 2) >> [
                 buildFlowLog(flowCode: "flow-b", businessId: "biz-2", status: "COMPLETED"),
                 buildFlowLog(flowCode: "flow-c", businessId: "biz-3", status: "FAILED")
         ]
+
         1 * alertEvaluateService.openOrUpdateFlowStuck("flow-a", "biz-1", null, null)
         1 * alertEvaluateService.closeFlowStuckByStatus("flow-b", "biz-2", "COMPLETED", null)
         1 * alertEvaluateService.closeFlowStuckByStatus("flow-c", "biz-3", "FAILED", null)
