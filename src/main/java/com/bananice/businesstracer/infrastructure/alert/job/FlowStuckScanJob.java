@@ -6,6 +6,7 @@ import com.bananice.businesstracer.config.BusinessTracerProperties;
 import com.bananice.businesstracer.domain.model.FlowLog;
 import com.bananice.businesstracer.domain.model.TraceStatus;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -15,6 +16,7 @@ import java.util.List;
 /**
  * Periodic scan job for opening/updating FLOW_STUCK events.
  */
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class FlowStuckScanJob {
@@ -30,13 +32,23 @@ public class FlowStuckScanJob {
 
         List<FlowLog> stuckInProgressFlows = flowLogService.findStuckInProgressFlows(threshold, batchSize);
         for (FlowLog flowLog : stuckInProgressFlows) {
-            alertEvaluateService.openOrUpdateFlowStuck(flowLog.getFlowCode(), flowLog.getBusinessId(), null, null);
+            try {
+                alertEvaluateService.openOrUpdateFlowStuck(flowLog.getFlowCode(), flowLog.getBusinessId(), null, null);
+            } catch (Exception e) {
+                log.error("Failed to open/update flow-stuck alert for flowCode={}, businessId={}",
+                        flowLog.getFlowCode(), flowLog.getBusinessId(), e);
+            }
         }
 
         List<FlowLog> staleFlows = flowLogService.findStaleFlows(threshold, batchSize);
         for (FlowLog flowLog : staleFlows) {
             if (!TraceStatus.IN_PROGRESS.getValue().equalsIgnoreCase(flowLog.getStatus())) {
-                alertEvaluateService.closeFlowStuckByStatus(flowLog.getFlowCode(), flowLog.getBusinessId(), flowLog.getStatus(), null);
+                try {
+                    alertEvaluateService.closeFlowStuckByStatus(flowLog.getFlowCode(), flowLog.getBusinessId(), flowLog.getStatus(), null);
+                } catch (Exception e) {
+                    log.error("Failed to close flow-stuck alert for flowCode={}, businessId={}, status={}",
+                            flowLog.getFlowCode(), flowLog.getBusinessId(), flowLog.getStatus(), e);
+                }
             }
         }
     }

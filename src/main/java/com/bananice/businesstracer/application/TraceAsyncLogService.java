@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -65,6 +66,9 @@ public class TraceAsyncLogService {
 
     private void produceNodeAlerts(NodeLog nodeLog) {
         List<AlertEvent> events = alertEvaluateService.evaluateNode(nodeLog);
+        if (events == null) {
+            events = Collections.emptyList();
+        }
         for (AlertEvent event : events) {
             String dedupKey = buildNodeAlertDedupKey(nodeLog.getNodeId(), event.getAlertType().name());
             if (alertEventRepository.existsByAggregateKey(dedupKey)) {
