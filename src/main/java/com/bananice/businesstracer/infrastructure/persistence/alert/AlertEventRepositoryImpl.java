@@ -42,6 +42,16 @@ public class AlertEventRepositoryImpl implements AlertEventRepository {
     }
 
     @Override
+    public boolean existsByAggregateKey(String aggregateKey) {
+        if (!StringUtils.hasText(aggregateKey)) {
+            return false;
+        }
+        QueryWrapper<AlertEventPO> query = new QueryWrapper<>();
+        query.eq("aggregate_key", aggregateKey).last("LIMIT 1");
+        return alertEventMapper.selectCount(query) > 0;
+    }
+
+    @Override
     public List<AlertEvent> query(LocalDateTime startTime, LocalDateTime endTime,
                                   AlertType alertType, AlertStatus status,
                                   String flowCode, String nodeCode, String businessId,

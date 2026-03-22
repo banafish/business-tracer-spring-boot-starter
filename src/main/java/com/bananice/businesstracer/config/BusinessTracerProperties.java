@@ -56,6 +56,21 @@ public class BusinessTracerProperties {
         private Integer aggregationBucketMinutes = 5;
 
         /**
+         * Threshold(ms) for considering IN_PROGRESS flow as stuck.
+         */
+        private Long flowStuckThresholdMs = 300000L;
+
+        /**
+         * Max rows scanned per stuck-flow job run.
+         */
+        private Integer flowStuckScanBatchSize = 200;
+
+        /**
+         * Fixed delay(ms) for stuck-flow scan scheduling.
+         */
+        private Long flowStuckScanFixedDelayMs = 60000L;
+
+        /**
          * Fixed delay(ms) for aggregation flush scheduling.
          */
         private Long aggregationFlushFixedDelayMs = 60000L;

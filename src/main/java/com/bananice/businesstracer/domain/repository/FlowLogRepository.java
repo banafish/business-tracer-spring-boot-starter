@@ -2,6 +2,7 @@ package com.bananice.businesstracer.domain.repository;
 
 import com.bananice.businesstracer.domain.model.FlowLog;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -44,4 +45,9 @@ public interface FlowLogRepository {
      * Update status for all flow logs of a business ID
      */
     void updateStatusByBusinessId(String businessId, String status);
+
+    /**
+     * Find IN_PROGRESS flow logs whose create_time is before the given threshold.
+     */
+    List<FlowLog> findInProgressBefore(LocalDateTime threshold, int limit);
 }

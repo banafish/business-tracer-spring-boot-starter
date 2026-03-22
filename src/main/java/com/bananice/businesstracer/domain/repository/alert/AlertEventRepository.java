@@ -18,6 +18,11 @@ public interface AlertEventRepository {
     void save(AlertEvent alertEvent);
 
     /**
+     * Check if any event exists by aggregate key.
+     */
+    boolean existsByAggregateKey(String aggregateKey);
+
+    /**
      * Query alert events with optional filters and pagination.
      */
     List<AlertEvent> query(LocalDateTime startTime, LocalDateTime endTime,
