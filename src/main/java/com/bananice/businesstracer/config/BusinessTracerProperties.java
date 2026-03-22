@@ -36,6 +36,11 @@ public class BusinessTracerProperties {
     public static class AlertConfig {
 
         /**
+         * Enable scheduling tasks used by alert center runtime.
+         */
+        private Boolean schedulingEnabled = true;
+
+        /**
          * Fixed delay(ms) for polling business_alert_config_version.
          */
         private Long configSyncFixedDelayMs = 5000L;

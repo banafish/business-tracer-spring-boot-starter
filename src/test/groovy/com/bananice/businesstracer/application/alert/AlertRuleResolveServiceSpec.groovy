@@ -3,16 +3,15 @@ package com.bananice.businesstracer.application.alert
 import com.bananice.businesstracer.domain.model.alert.AlertRule
 import com.bananice.businesstracer.domain.model.alert.AlertScopeType
 import com.bananice.businesstracer.domain.model.alert.AlertType
-import com.bananice.businesstracer.domain.repository.alert.AlertRuleRepository
 import spock.lang.Specification
 import spock.lang.Subject
 
 class AlertRuleResolveServiceSpec extends Specification {
 
-    AlertRuleRepository alertRuleRepository = Mock()
+    AlertConfigCacheService alertConfigCacheService = Mock()
 
     @Subject
-    AlertRuleResolveService alertRuleResolveService = new AlertRuleResolveService(alertRuleRepository)
+    AlertRuleResolveService alertRuleResolveService = new AlertRuleResolveService(alertConfigCacheService)
 
     private AlertRule buildRule(Map overrides = [:]) {
         def defaults = [
@@ -42,9 +41,9 @@ class AlertRuleResolveServiceSpec extends Specification {
         def globalRule = buildRule(scopeType: AlertScopeType.GLOBAL, scopeRef: "GLOBAL", name: "global-rule")
 
         and:
-        alertRuleRepository.findByScope(AlertScopeType.NODE, "flow-a", "node-x") >> nodeRule
-        alertRuleRepository.findByScope(AlertScopeType.FLOW, "flow-a", "flow-a") >> flowRule
-        alertRuleRepository.findByScope(AlertScopeType.GLOBAL, null, "GLOBAL") >> globalRule
+        alertConfigCacheService.findByScope(AlertScopeType.NODE, "flow-a", "node-x") >> nodeRule
+        alertConfigCacheService.findByScope(AlertScopeType.FLOW, "flow-a", "flow-a") >> flowRule
+        alertConfigCacheService.findByScope(AlertScopeType.GLOBAL, null, "GLOBAL") >> globalRule
 
         when:
         def resolved = alertRuleResolveService.resolve("flow-a", "node-x")
@@ -59,9 +58,9 @@ class AlertRuleResolveServiceSpec extends Specification {
         def globalRule = buildRule(scopeType: AlertScopeType.GLOBAL, scopeRef: "GLOBAL", name: "global-rule")
 
         and:
-        alertRuleRepository.findByScope(AlertScopeType.NODE, "flow-a", "node-x") >> null
-        alertRuleRepository.findByScope(AlertScopeType.FLOW, "flow-a", "flow-a") >> flowRule
-        alertRuleRepository.findByScope(AlertScopeType.GLOBAL, null, "GLOBAL") >> globalRule
+        alertConfigCacheService.findByScope(AlertScopeType.NODE, "flow-a", "node-x") >> null
+        alertConfigCacheService.findByScope(AlertScopeType.FLOW, "flow-a", "flow-a") >> flowRule
+        alertConfigCacheService.findByScope(AlertScopeType.GLOBAL, null, "GLOBAL") >> globalRule
 
         when:
         def resolved = alertRuleResolveService.resolve("flow-a", "node-x")
@@ -75,9 +74,9 @@ class AlertRuleResolveServiceSpec extends Specification {
         def globalRule = buildRule(scopeType: AlertScopeType.GLOBAL, scopeRef: "GLOBAL", name: "global-rule")
 
         and:
-        alertRuleRepository.findByScope(AlertScopeType.NODE, "flow-a", "node-x") >> null
-        alertRuleRepository.findByScope(AlertScopeType.FLOW, "flow-a", "flow-a") >> null
-        alertRuleRepository.findByScope(AlertScopeType.GLOBAL, null, "GLOBAL") >> globalRule
+        alertConfigCacheService.findByScope(AlertScopeType.NODE, "flow-a", "node-x") >> null
+        alertConfigCacheService.findByScope(AlertScopeType.FLOW, "flow-a", "flow-a") >> null
+        alertConfigCacheService.findByScope(AlertScopeType.GLOBAL, null, "GLOBAL") >> globalRule
 
         when:
         def resolved = alertRuleResolveService.resolve("flow-a", "node-x")

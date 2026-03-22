@@ -2,7 +2,6 @@ package com.bananice.businesstracer.application.alert;
 
 import com.bananice.businesstracer.domain.model.alert.AlertRule;
 import com.bananice.businesstracer.domain.model.alert.AlertScopeType;
-import com.bananice.businesstracer.domain.repository.alert.AlertRuleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -17,23 +16,23 @@ public class AlertRuleResolveService {
 
     private static final String GLOBAL_SCOPE_REF = "GLOBAL";
 
-    private final AlertRuleRepository alertRuleRepository;
+    private final AlertConfigCacheService alertConfigCacheService;
 
     public AlertRule resolve(String flowCode, String nodeCode) {
         if (StringUtils.hasText(flowCode) && StringUtils.hasText(nodeCode)) {
-            AlertRule nodeRule = alertRuleRepository.findByScope(AlertScopeType.NODE, flowCode, nodeCode);
+            AlertRule nodeRule = alertConfigCacheService.findByScope(AlertScopeType.NODE, flowCode, nodeCode);
             if (nodeRule != null) {
                 return nodeRule;
             }
         }
 
         if (StringUtils.hasText(flowCode)) {
-            AlertRule flowRule = alertRuleRepository.findByScope(AlertScopeType.FLOW, flowCode, flowCode);
+            AlertRule flowRule = alertConfigCacheService.findByScope(AlertScopeType.FLOW, flowCode, flowCode);
             if (flowRule != null) {
                 return flowRule;
             }
         }
 
-        return alertRuleRepository.findByScope(AlertScopeType.GLOBAL, null, GLOBAL_SCOPE_REF);
+        return alertConfigCacheService.findByScope(AlertScopeType.GLOBAL, null, GLOBAL_SCOPE_REF);
     }
 }
