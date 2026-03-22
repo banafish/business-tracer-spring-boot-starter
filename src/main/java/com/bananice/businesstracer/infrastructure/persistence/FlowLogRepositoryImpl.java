@@ -10,6 +10,8 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -100,6 +102,35 @@ public class FlowLogRepositoryImpl implements FlowLogRepository {
         QueryWrapper<FlowLogPO> query = new QueryWrapper<>();
         query.eq("business_id", businessId);
         flowLogMapper.update(updatePO, query);
+    }
+
+    @Override
+    public List<FlowLog> findInProgressBefore(LocalDateTime threshold, int limit) {
+        if (threshold == null || limit <= 0) {
+            return Collections.emptyList();
+        }
+        QueryWrapper<FlowLogPO> query = new QueryWrapper<>();
+        query.eq("status", "IN_PROGRESS")
+                .le("create_time", threshold)
+                .orderByAsc("create_time")
+                .last("LIMIT " + limit);
+
+        List<FlowLogPO> pos = flowLogMapper.selectList(query);
+        return pos.stream().map(this::toDomain).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<FlowLog> findByCreateTimeBefore(LocalDateTime threshold, int limit) {
+        if (threshold == null || limit <= 0) {
+            return Collections.emptyList();
+        }
+        QueryWrapper<FlowLogPO> query = new QueryWrapper<>();
+        query.le("create_time", threshold)
+                .orderByAsc("create_time")
+                .last("LIMIT " + limit);
+
+        List<FlowLogPO> pos = flowLogMapper.selectList(query);
+        return pos.stream().map(this::toDomain).collect(Collectors.toList());
     }
 
     private FlowLog toDomain(FlowLogPO po) {

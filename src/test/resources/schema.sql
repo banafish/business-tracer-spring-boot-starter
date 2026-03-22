@@ -47,3 +47,73 @@ CREATE TABLE IF NOT EXISTS `business_flow_dsl` (
   `update_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT 'Update Time',
   PRIMARY KEY (`id`)
 );
+
+CREATE TABLE IF NOT EXISTS `business_alert_rule` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'Primary Key',
+  `rule_code` varchar(64) NOT NULL COMMENT 'Rule Code',
+  `rule_name` varchar(128) DEFAULT NULL COMMENT 'Rule Name',
+  `alert_type` varchar(32) NOT NULL COMMENT 'Alert Type',
+  `scope_type` varchar(16) NOT NULL COMMENT 'Scope Type: GLOBAL/FLOW/NODE',
+  `scope_code` varchar(128) NOT NULL COMMENT 'Scope Code',
+  `flow_code` varchar(64) DEFAULT NULL COMMENT 'Flow Code',
+  `enabled` tinyint(1) NOT NULL DEFAULT 1 COMMENT 'Enabled Flag',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT 'Creation Time',
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Update Time',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_alert_rule_scope` (`scope_type`, `scope_code`),
+  UNIQUE KEY `uk_alert_rule_scope_flow` (`scope_type`, `flow_code`, `scope_code`)
+);
+
+CREATE TABLE IF NOT EXISTS `business_alert_channel` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'Primary Key',
+  `channel_code` varchar(64) NOT NULL COMMENT 'Channel Code',
+  `channel_type` varchar(32) NOT NULL COMMENT 'Channel Type',
+  `channel_name` varchar(128) DEFAULT NULL COMMENT 'Channel Name',
+  `config_json` text COMMENT 'Channel Config JSON',
+  `enabled` tinyint(1) NOT NULL DEFAULT 1 COMMENT 'Enabled Flag',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT 'Creation Time',
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Update Time',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_alert_channel_code` (`channel_code`)
+);
+
+CREATE TABLE IF NOT EXISTS `business_alert_event` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'Primary Key',
+  `event_code` varchar(64) NOT NULL COMMENT 'Event Code',
+  `alert_type` varchar(32) NOT NULL COMMENT 'Alert Type',
+  `status` varchar(32) NOT NULL COMMENT 'Event Status',
+  `aggregate_key` varchar(128) DEFAULT NULL COMMENT 'Aggregate Key',
+  `flow_code` varchar(64) DEFAULT NULL COMMENT 'Flow Code',
+  `node_code` varchar(64) DEFAULT NULL COMMENT 'Node Code',
+  `business_id` varchar(64) DEFAULT NULL COMMENT 'Business ID',
+  `content` text COMMENT 'Alert Content',
+  `last_occur_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT 'Last Occur Time',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT 'Creation Time',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_alert_event_code` (`event_code`),
+  KEY `idx_alert_event_type_status_time` (`create_time`, `alert_type`, `status`),
+  KEY `idx_alert_event_flow_node_biz_time` (`flow_code`, `node_code`, `business_id`, `create_time`),
+  KEY `idx_alert_event_agg_status_occur` (`aggregate_key`, `status`, `last_occur_time`)
+);
+
+CREATE TABLE IF NOT EXISTS `business_alert_dispatch_log` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'Primary Key',
+  `event_id` bigint(20) NOT NULL COMMENT 'Alert Event ID',
+  `channel_code` varchar(64) NOT NULL COMMENT 'Channel Code',
+  `dispatch_status` varchar(32) NOT NULL COMMENT 'Dispatch Status',
+  `dispatch_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT 'Dispatch Time',
+  `error_message` text COMMENT 'Error Message',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT 'Creation Time',
+  PRIMARY KEY (`id`),
+  KEY `idx_alert_dispatch_event_time` (`event_id`, `dispatch_time`)
+);
+
+CREATE TABLE IF NOT EXISTS `business_alert_config_version` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'Primary Key',
+  `version_no` bigint(20) NOT NULL COMMENT 'Version Number',
+  `checksum` varchar(128) DEFAULT NULL COMMENT 'Checksum',
+  `published` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Published Flag',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT 'Creation Time',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_alert_config_version_no` (`version_no`)
+);

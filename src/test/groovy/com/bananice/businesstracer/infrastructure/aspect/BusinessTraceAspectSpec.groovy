@@ -2,8 +2,10 @@ package com.bananice.businesstracer.infrastructure.aspect
 
 import com.bananice.businesstracer.TestApplication
 import com.bananice.businesstracer.domain.model.NodeLog
+import com.bananice.businesstracer.domain.model.alert.AlertType
 import com.bananice.businesstracer.domain.repository.NodeLogRepository
 import com.bananice.businesstracer.domain.repository.DetailLogRepository
+import com.bananice.businesstracer.domain.repository.alert.AlertEventRepository
 import com.bananice.businesstracer.fixture.TracedTestService
 import com.bananice.businesstracer.infrastructure.context.TraceContextHolder
 import org.springframework.boot.test.context.SpringBootTest
@@ -14,7 +16,9 @@ import spock.util.concurrent.PollingConditions
 
 import javax.annotation.Resource
 
-@SpringBootTest(classes = TestApplication)
+@SpringBootTest(classes = TestApplication, properties = [
+        "business-tracer.alert.slow-node-threshold-ms=20"
+])
 @Transactional
 class BusinessTraceAspectSpec extends Specification {
 
@@ -27,6 +31,9 @@ class BusinessTraceAspectSpec extends Specification {
 
     @Resource
     DetailLogRepository detailLogRepository
+
+    @Resource
+    AlertEventRepository alertEventRepository
 
     PollingConditions conditions = new PollingConditions(timeout: 3, initialDelay: 0.2)
 
@@ -252,6 +259,50 @@ class BusinessTraceAspectSpec extends Specification {
             assert logs1.size() == 1
             assert logs2.size() == 1
             assert logs1[0].nodeId != logs2[0].nodeId
+        }
+    }
+
+    def "FAILED节点写入一条NODE_FAILED告警事件"() {
+        when:
+        tracedTestService.throwingMethod("ALERT-FAIL-001")
+
+        then:
+        thrown(RuntimeException)
+
+        and:
+        conditions.eventually {
+            def events = alertEventRepository.query(null, null, AlertType.NODE_FAILED, null, null, "ERROR_NODE", "ALERT-FAIL-001", 1, 10)
+            assert events.size() == 1
+            assert events[0].alertType == AlertType.NODE_FAILED
+        }
+    }
+
+    def "慢节点写入一条SLOW_NODE告警事件"() {
+        when:
+        def result = tracedTestService.slowMethod("ALERT-SLOW-001")
+
+        then:
+        result == "slow-ALERT-SLOW-001"
+
+        and:
+        conditions.eventually {
+            def events = alertEventRepository.query(null, null, AlertType.SLOW_NODE, null, null, "SLOW_NODE_CASE", "ALERT-SLOW-001", 1, 10)
+            assert events.size() == 1
+            assert events[0].alertType == AlertType.SLOW_NODE
+        }
+    }
+
+    def "单次trace调用不会创建重复告警事件"() {
+        when:
+        tracedTestService.throwingMethod("ALERT-DEDUP-001")
+
+        then:
+        thrown(RuntimeException)
+
+        and:
+        conditions.eventually {
+            def events = alertEventRepository.query(null, null, AlertType.NODE_FAILED, null, null, "ERROR_NODE", "ALERT-DEDUP-001", 1, 10)
+            assert events.size() == 1
         }
     }
 }

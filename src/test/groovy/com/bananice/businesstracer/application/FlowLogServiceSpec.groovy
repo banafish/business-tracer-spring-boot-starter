@@ -10,6 +10,7 @@ import spock.lang.Specification
 import spock.lang.Subject
 import spock.lang.Unroll
 
+import java.time.Duration
 import java.time.LocalDateTime
 
 class FlowLogServiceSpec extends Specification {
@@ -288,5 +289,24 @@ class FlowLogServiceSpec extends Specification {
         then: "两个flow都被更新"
         1 * flowLogRepository.updateStatus("flow-1", "bus-check", "COMPLETED")
         1 * flowLogRepository.updateStatus("flow-2", "bus-check", "COMPLETED")
+    }
+
+    def "findStaleFlows在无效参数时返回空列表"() {
+        expect:
+        flowLogService.findStaleFlows(null, 10).isEmpty()
+        flowLogService.findStaleFlows(Duration.ZERO, 10).isEmpty()
+        flowLogService.findStaleFlows(Duration.ofSeconds(-1), 10).isEmpty()
+    }
+
+    def "findStaleFlows按阈值委托repository查询"() {
+        given:
+        flowLogRepository.findByCreateTimeBefore(_ as LocalDateTime, 5) >> [buildFlowLog("flow-stale", "biz-1", "IN_PROGRESS")]
+
+        when:
+        def result = flowLogService.findStaleFlows(Duration.ofMinutes(10), 5)
+
+        then:
+        result.size() == 1
+        result[0].flowCode == "flow-stale"
     }
 }

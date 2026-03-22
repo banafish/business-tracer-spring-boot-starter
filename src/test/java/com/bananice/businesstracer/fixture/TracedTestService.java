@@ -46,6 +46,19 @@ public class TracedTestService {
     }
 
     /**
+     * 慢节点场景：耗时超过告警阈值
+     */
+    @BusinessTrace(code = "SLOW_NODE_CASE", key = "#id")
+    public String slowMethod(String id) {
+        try {
+            Thread.sleep(80L);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        return "slow-" + id;
+    }
+
+    /**
      * 手动标记错误场景：调用 BusinessTracer.recordError()
      */
     @BusinessTrace(code = "MANUAL_ERROR_NODE", key = "#id")

@@ -2,11 +2,13 @@ package com.bananice.businesstracer.config;
 
 import com.bananice.businesstracer.infrastructure.context.TraceContextTaskDecorator;
 import org.mybatis.spring.annotation.MapperScan;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.concurrent.Executor;
@@ -35,5 +37,11 @@ public class BusinessTracerAutoConfiguration {
         executor.setTaskDecorator(new TraceContextTaskDecorator());
         executor.initialize();
         return executor;
+    }
+
+    @Configuration
+    @EnableScheduling
+    @ConditionalOnProperty(prefix = "business-tracer.alert", name = "scheduling-enabled", havingValue = "true", matchIfMissing = true)
+    static class AlertSchedulingConfiguration {
     }
 }

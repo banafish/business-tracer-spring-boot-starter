@@ -186,4 +186,18 @@ class FlowLogRepositoryImplSpec extends Specification {
         and: "其他记录不受影响"
         flowLogRepository.findAll("flow-safe", "bus-other", 1, 10)[0].status == "IN_PROGRESS"
     }
+
+    def "按创建时间阈值查询陈旧流程不会过滤终态"() {
+        given: "保存两条陈旧记录和一条较新记录"
+        flowLogRepository.save(buildFlowLog(flowCode: "flow-stale", businessId: "biz-in-progress", status: "IN_PROGRESS", createTime: now.minusMinutes(20)))
+        flowLogRepository.save(buildFlowLog(flowCode: "flow-stale", businessId: "biz-completed", status: "COMPLETED", createTime: now.minusMinutes(15)))
+        flowLogRepository.save(buildFlowLog(flowCode: "flow-stale", businessId: "biz-recent", status: "FAILED", createTime: now.minusMinutes(1)))
+
+        when: "按阈值查询陈旧流程"
+        def results = flowLogRepository.findByCreateTimeBefore(now.minusMinutes(10), 10)
+
+        then: "返回陈旧的IN_PROGRESS与终态，排除较新记录"
+        results*.businessId.containsAll(["biz-in-progress", "biz-completed"])
+        !results*.businessId.contains("biz-recent")
+    }
 }
