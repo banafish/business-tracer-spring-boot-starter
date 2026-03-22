@@ -126,6 +126,30 @@ class AlertDispatchServiceSpec extends Specification {
         savedLogs.count { it.channelId == 12L && it.status == AlertStatus.SENT } == 1
     }
 
+    def "dispatch with maxRetries=0 executes exactly one attempt"() {
+        given:
+        def channel = buildChannel(id: 21L, channelType: AlertChannelType.WEBHOOK)
+        def zeroRetryService = new AlertDispatchService(
+                alertChannelRepository,
+                alertDispatchLogRepository,
+                [webhookSender, emailSender],
+                80L,
+                0
+        )
+
+        and:
+        alertChannelRepository.findEnabled() >> [channel]
+        webhookSender.supports(AlertChannelType.WEBHOOK) >> true
+        emailSender.supports(AlertChannelType.WEBHOOK) >> false
+
+        when:
+        zeroRetryService.dispatchRealtime(buildEvent())
+
+        then:
+        1 * webhookSender.send(channel, _ as AlertEvent) >> { throw new RuntimeException("boom") }
+        1 * alertDispatchLogRepository.save(_ as AlertDispatchLog)
+    }
+
     def "silence window supports cross midnight and edge boundaries"() {
         expect:
         alertDispatchService.isWithinSilenceWindow(LocalTime.of(23, 0), LocalTime.of(23, 0), LocalTime.of(2, 0))

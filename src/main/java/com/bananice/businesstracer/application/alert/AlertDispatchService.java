@@ -4,6 +4,7 @@ import com.bananice.businesstracer.domain.model.alert.AlertChannel;
 import com.bananice.businesstracer.domain.model.alert.AlertDispatchLog;
 import com.bananice.businesstracer.domain.model.alert.AlertEvent;
 import com.bananice.businesstracer.domain.model.alert.AlertStatus;
+import com.bananice.businesstracer.domain.model.alert.AlertType;
 import com.bananice.businesstracer.domain.repository.alert.AlertChannelRepository;
 import com.bananice.businesstracer.domain.repository.alert.AlertDispatchLogRepository;
 import com.bananice.businesstracer.infrastructure.alert.channel.AlertChannelSender;
@@ -53,7 +54,7 @@ public class AlertDispatchService {
             if (sender == null) {
                 continue;
             }
-            int totalAttempts = Math.max(2, maxRetries + 1);
+            int totalAttempts = Math.max(1, maxRetries + 1);
             for (int attempt = 0; attempt < totalAttempts; attempt++) {
                 LocalDateTime dispatchTime = LocalDateTime.now();
                 try {
@@ -70,6 +71,25 @@ public class AlertDispatchService {
                 }
             }
         }
+    }
+
+    public void dispatchAggregated(AlertAggregationService.AggregationResult aggregationResult) {
+        if (aggregationResult == null || aggregationResult.getAggregateKey() == null) {
+            return;
+        }
+        AlertEvent aggregatedEvent = AlertEvent.builder()
+                .id(-1L)
+                .alertType(AlertType.FLOW_STUCK)
+                .status(AlertStatus.NEW)
+                .aggregateKey(aggregationResult.getAggregateKey())
+                .message(String.format("Aggregated alert %s count=%d window=[%s,%s)",
+                        aggregationResult.getAggregateKey(),
+                        aggregationResult.getCount(),
+                        aggregationResult.getBucketStart(),
+                        aggregationResult.getBucketEnd()))
+                .occurredAt(aggregationResult.getBucketEnd())
+                .build();
+        dispatchRealtime(aggregatedEvent);
     }
 
     public boolean isWithinSilenceWindow(LocalTime now, LocalTime start, LocalTime end) {

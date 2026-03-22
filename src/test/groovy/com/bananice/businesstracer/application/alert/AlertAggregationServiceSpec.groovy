@@ -3,12 +3,15 @@ package com.bananice.businesstracer.application.alert
 import com.bananice.businesstracer.domain.model.alert.AlertEvent
 import com.bananice.businesstracer.domain.model.alert.AlertStatus
 import com.bananice.businesstracer.domain.model.alert.AlertType
+import com.bananice.businesstracer.infrastructure.alert.job.AlertAggregationFlushJob
 import spock.lang.Specification
 import spock.lang.Subject
 
 import java.time.LocalDateTime
 
 class AlertAggregationServiceSpec extends Specification {
+
+    AlertDispatchService alertDispatchService = Mock()
 
     @Subject
     AlertAggregationService alertAggregationService = new AlertAggregationService(5)
@@ -65,5 +68,19 @@ class AlertAggregationServiceSpec extends Specification {
         flushed.size() == 1
         flushed[0].aggregateKey == "k1"
         flushed[0].count == 1
+    }
+
+    def "flush job dispatches each matured aggregation result"() {
+        given:
+        def aggregationService = new AlertAggregationService(5)
+        def flushJob = new AlertAggregationFlushJob(aggregationService, alertDispatchService)
+        aggregationService.aggregate(buildEvent(aggregateKey: "flow-a:node-a", occurredAt: LocalDateTime.of(2000, 1, 1, 10, 1)))
+        aggregationService.aggregate(buildEvent(aggregateKey: "flow-a:node-b", occurredAt: LocalDateTime.of(2000, 1, 1, 10, 2)))
+
+        when:
+        flushJob.flushAggregationBuckets()
+
+        then:
+        2 * alertDispatchService.dispatchAggregated(_ as AlertAggregationService.AggregationResult)
     }
 }
