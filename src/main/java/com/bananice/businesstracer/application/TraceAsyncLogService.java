@@ -34,7 +34,11 @@ public class TraceAsyncLogService {
     public void saveNodeLogAndFlowLogsAsync(NodeLog logRecord, String code, String businessId, boolean hasFailed) {
         try {
             nodeLogRepository.save(logRecord);
-            produceNodeAlerts(logRecord);
+            try {
+                produceNodeAlerts(logRecord);
+            } catch (Exception e) {
+                log.error("Failed to produce node alerts during async log save", e);
+            }
 
             flowLogService.recordFlowLogs(code, businessId);
 

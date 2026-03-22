@@ -166,8 +166,10 @@ public class FlowLogService {
      * Find IN_PROGRESS flows that have exceeded the given max age.
      */
     public List<FlowLog> findStuckInProgressFlows(Duration maxAge, int limit) {
-        return findStaleFlows(maxAge, limit).stream()
-                .filter(flowLog -> TraceStatus.IN_PROGRESS.getValue().equalsIgnoreCase(flowLog.getStatus()))
-                .collect(Collectors.toList());
+        if (maxAge == null || maxAge.isNegative() || maxAge.isZero()) {
+            return Collections.emptyList();
+        }
+        LocalDateTime threshold = LocalDateTime.now().minus(maxAge);
+        return flowLogRepository.findInProgressBefore(threshold, limit);
     }
 }
