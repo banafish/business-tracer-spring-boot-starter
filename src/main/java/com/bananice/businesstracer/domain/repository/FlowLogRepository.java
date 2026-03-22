@@ -50,4 +50,9 @@ public interface FlowLogRepository {
      * Find IN_PROGRESS flow logs whose create_time is before the given threshold.
      */
     List<FlowLog> findInProgressBefore(LocalDateTime threshold, int limit);
+
+    /**
+     * Find flow logs whose create_time is before the given threshold regardless of status.
+     */
+    List<FlowLog> findByCreateTimeBefore(LocalDateTime threshold, int limit);
 }

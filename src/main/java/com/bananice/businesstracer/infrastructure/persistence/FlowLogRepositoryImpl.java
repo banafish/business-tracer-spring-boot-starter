@@ -119,6 +119,20 @@ public class FlowLogRepositoryImpl implements FlowLogRepository {
         return pos.stream().map(this::toDomain).collect(Collectors.toList());
     }
 
+    @Override
+    public List<FlowLog> findByCreateTimeBefore(LocalDateTime threshold, int limit) {
+        if (threshold == null || limit <= 0) {
+            return Collections.emptyList();
+        }
+        QueryWrapper<FlowLogPO> query = new QueryWrapper<>();
+        query.le("create_time", threshold)
+                .orderByAsc("create_time")
+                .last("LIMIT " + limit);
+
+        List<FlowLogPO> pos = flowLogMapper.selectList(query);
+        return pos.stream().map(this::toDomain).collect(Collectors.toList());
+    }
+
     private FlowLog toDomain(FlowLogPO po) {
         if (po == null) {
             return null;

@@ -26,8 +26,8 @@ public class FlowStuckScanJob {
     @Scheduled(fixedDelayString = "${business-tracer.alert.flow-stuck-scan-fixed-delay-ms:60000}")
     public void scanAndPublishFlowStuck() {
         Duration threshold = Duration.ofMillis(resolveThresholdMs());
-        List<FlowLog> stuckFlows = flowLogService.findStuckInProgressFlows(threshold, resolveBatchSize());
-        for (FlowLog flowLog : stuckFlows) {
+        List<FlowLog> staleFlows = flowLogService.findStaleFlows(threshold, resolveBatchSize());
+        for (FlowLog flowLog : staleFlows) {
             if (!TraceStatus.IN_PROGRESS.getValue().equalsIgnoreCase(flowLog.getStatus())) {
                 alertEvaluateService.closeFlowStuckByStatus(flowLog.getFlowCode(), flowLog.getBusinessId(), flowLog.getStatus(), null);
                 continue;

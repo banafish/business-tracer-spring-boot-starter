@@ -152,13 +152,22 @@ public class FlowLogService {
     }
 
     /**
-     * Find IN_PROGRESS flows that have exceeded the given max age.
+     * Find stale flows that have exceeded the given max age regardless of status.
      */
-    public List<FlowLog> findStuckInProgressFlows(Duration maxAge, int limit) {
+    public List<FlowLog> findStaleFlows(Duration maxAge, int limit) {
         if (maxAge == null || maxAge.isNegative() || maxAge.isZero()) {
             return Collections.emptyList();
         }
         LocalDateTime threshold = LocalDateTime.now().minus(maxAge);
-        return flowLogRepository.findInProgressBefore(threshold, limit);
+        return flowLogRepository.findByCreateTimeBefore(threshold, limit);
+    }
+
+    /**
+     * Find IN_PROGRESS flows that have exceeded the given max age.
+     */
+    public List<FlowLog> findStuckInProgressFlows(Duration maxAge, int limit) {
+        return findStaleFlows(maxAge, limit).stream()
+                .filter(flowLog -> TraceStatus.IN_PROGRESS.getValue().equalsIgnoreCase(flowLog.getStatus()))
+                .collect(Collectors.toList());
     }
 }
