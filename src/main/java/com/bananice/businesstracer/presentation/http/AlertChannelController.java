@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import javax.validation.Valid;
+
 @RestController
 @RequestMapping("/business-tracer/api/alerts/channels")
 @RequiredArgsConstructor
@@ -28,7 +30,7 @@ public class AlertChannelController {
     }
 
     @PostMapping
-    public ResponseEntity<ApiResult<Void>> createChannel(@RequestBody AlertChannelUpsertRequest request) {
+    public ResponseEntity<ApiResult<Void>> createChannel(@Valid @RequestBody AlertChannelUpsertRequest request) {
         if (request == null) {
             return ResponseEntity.ok(ApiResult.error(400, "request body is required"));
         }
@@ -44,7 +46,7 @@ public class AlertChannelController {
 
     @PutMapping("/{id}")
     public ResponseEntity<ApiResult<Void>> updateChannel(@PathVariable Long id,
-                                                         @RequestBody AlertChannelUpsertRequest request) {
+                                                         @Valid @RequestBody AlertChannelUpsertRequest request) {
         if (request == null) {
             return ResponseEntity.ok(ApiResult.error(400, "request body is required"));
         }

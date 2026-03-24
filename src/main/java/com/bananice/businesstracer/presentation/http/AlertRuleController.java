@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+import javax.validation.Valid;
+
 @RestController
 @RequestMapping("/business-tracer/api/alerts/rules")
 @RequiredArgsConstructor
@@ -25,7 +27,7 @@ public class AlertRuleController {
     @PutMapping("/{scopeType}/{scopeCode}")
     public ResponseEntity<ApiResult<Void>> upsertRule(@PathVariable String scopeType,
                                                       @PathVariable String scopeCode,
-                                                      @RequestBody AlertRuleUpsertRequest request) {
+                                                      @Valid @RequestBody AlertRuleUpsertRequest request) {
         AlertScopeType parsedScopeType;
         try {
             parsedScopeType = AlertScopeType.valueOf(scopeType);
