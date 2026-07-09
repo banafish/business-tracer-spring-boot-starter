@@ -21,7 +21,14 @@
 
     <properties>
         <java.version>1.8</java.version>
+        <maven.compiler.release>8</maven.compiler.release>
         <mybatis-plus.version>3.5.3.1</mybatis-plus.version>
+        <spotless-maven-plugin.version>2.44.5</spotless-maven-plugin.version>
+        <palantir-java-format.version>2.50.0</palantir-java-format.version>
+        <spotbugs-maven-plugin.version>4.8.6.6</spotbugs-maven-plugin.version>
+        <jacoco-maven-plugin.version>0.8.12</jacoco-maven-plugin.version>
+        <maven-enforcer-plugin.version>3.5.0</maven-enforcer-plugin.version>
+        <archunit.version>1.3.0</archunit.version>
     </properties>
 
     <dependencies>
@@ -146,6 +153,32 @@
                         <include>**/*Test.java</include>
                     </includes>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>${maven-enforcer-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>enforce-build-environment</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireJavaVersion>
+                                    <version>[17,)</version>
+                                    <message>构建需要 JDK 17+（产物仍是 Java 8 字节码，见 maven.compiler.release）</message>
+                                </requireJavaVersion>
+                                <requireMavenVersion>
+                                    <version>[3.6.3,)</version>
+                                </requireMavenVersion>
+                                <banDuplicatePomDependencyVersions/>
+                                <dependencyConvergence/>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
