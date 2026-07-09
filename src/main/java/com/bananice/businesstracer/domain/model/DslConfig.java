@@ -1,8 +1,8 @@
 package com.bananice.businesstracer.domain.model;
 
-import lombok.Data;
 import java.time.LocalDateTime;
 import java.util.List;
+import lombok.Data;
 
 /**
  * DSL Configuration - defines how nodes should be displayed

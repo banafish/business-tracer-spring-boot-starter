@@ -1,12 +1,11 @@
 package com.bananice.businesstracer.domain.model;
 
-import lombok.Data;
-
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.Collections;
+import lombok.Data;
 
 /**
  * DSL Node - represents a node in the visualization layout

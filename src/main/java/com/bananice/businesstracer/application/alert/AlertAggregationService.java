@@ -2,17 +2,16 @@ package com.bananice.businesstracer.application.alert;
 
 import com.bananice.businesstracer.domain.model.alert.AlertEvent;
 import com.bananice.businesstracer.domain.model.alert.AlertType;
-import lombok.AllArgsConstructor;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 
 /**
  * Aggregate alert events in fixed minute buckets.
@@ -50,7 +49,12 @@ public class AlertAggregationService {
             AggregateCounter counter = entry.getValue();
             LocalDateTime bucketEnd = counter.getBucketStart().plusMinutes(bucketMinutes);
             if (!bucketEnd.isAfter(flushTime)) {
-                results.add(new AggregationResult(counter.getAggregateKey(), counter.getAlertType(), counter.getCount(), counter.getBucketStart(), bucketEnd));
+                results.add(new AggregationResult(
+                        counter.getAggregateKey(),
+                        counter.getAlertType(),
+                        counter.getCount(),
+                        counter.getBucketStart(),
+                        bucketEnd));
                 toRemove.add(entry.getKey());
             }
         }

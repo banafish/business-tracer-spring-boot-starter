@@ -1,13 +1,12 @@
 package com.bananice.businesstracer.presentation.http;
 
 import com.bananice.businesstracer.infrastructure.registry.BusinessTraceRegistry;
+import java.util.Collection;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.Collection;
 
 /**
  * REST Controller for getting registered node codes

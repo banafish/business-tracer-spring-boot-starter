@@ -1,17 +1,16 @@
 package com.bananice.businesstracer.api;
 
+import com.bananice.businesstracer.application.TraceAsyncLogService;
 import com.bananice.businesstracer.domain.model.DetailLog;
 import com.bananice.businesstracer.domain.model.TraceStatus;
-import com.bananice.businesstracer.application.TraceAsyncLogService;
 import com.bananice.businesstracer.infrastructure.context.TraceContext;
 import com.bananice.businesstracer.infrastructure.context.TraceContextHolder;
+import java.time.LocalDateTime;
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
-
-import java.time.LocalDateTime;
 
 /**
  * Static API for recording detailed logs within a traced flow.

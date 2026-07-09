@@ -4,19 +4,18 @@ import com.bananice.businesstracer.application.DslService;
 import com.bananice.businesstracer.application.FlowLogService;
 import com.bananice.businesstracer.application.dto.DslRenderResult;
 import com.bananice.businesstracer.application.dto.PageResult;
-import com.bananice.businesstracer.domain.model.DslConfig;
 import com.bananice.businesstracer.domain.model.DetailLog;
+import com.bananice.businesstracer.domain.model.DslConfig;
 import com.bananice.businesstracer.domain.model.FlowLog;
 import com.bananice.businesstracer.domain.model.NodeLog;
 import com.bananice.businesstracer.domain.repository.DetailLogRepository;
 import com.bananice.businesstracer.domain.repository.NodeLogRepository;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/business-tracer")
@@ -74,8 +73,7 @@ public class BusinessTraceController {
      * Get detail logs by parentNodeId
      */
     @GetMapping("/trace/details")
-    public List<DetailLog> getTraceDetails(
-            @RequestParam("parentNodeId") String parentNodeId) {
+    public List<DetailLog> getTraceDetails(@RequestParam("parentNodeId") String parentNodeId) {
         return detailLogRepository.findByParentNodeId(parentNodeId);
     }
 }

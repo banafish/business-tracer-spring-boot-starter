@@ -7,14 +7,12 @@ import com.bananice.businesstracer.domain.model.alert.AlertEvent;
 import com.bananice.businesstracer.domain.model.alert.AlertStatus;
 import com.bananice.businesstracer.domain.model.alert.AlertType;
 import com.bananice.businesstracer.domain.repository.alert.AlertChannelRepository;
+import java.time.LocalDateTime;
+import java.util.List;
+import javax.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.time.LocalDateTime;
-import java.util.List;
-
-import javax.validation.Valid;
 
 @RestController
 @RequestMapping("/business-tracer/api/alerts/channels")
@@ -45,8 +43,8 @@ public class AlertChannelController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResult<Void>> updateChannel(@PathVariable Long id,
-                                                         @Valid @RequestBody AlertChannelUpsertRequest request) {
+    public ResponseEntity<ApiResult<Void>> updateChannel(
+            @PathVariable Long id, @Valid @RequestBody AlertChannelUpsertRequest request) {
         if (request == null) {
             return ResponseEntity.ok(ApiResult.error(400, "request body is required"));
         }

@@ -1,7 +1,6 @@
 package com.bananice.businesstracer.domain.repository;
 
 import com.bananice.businesstracer.domain.model.DslConfig;
-
 import java.util.List;
 
 /**
@@ -31,7 +30,7 @@ public interface DslConfigRepository {
 
     /**
      * Delete DSL by flowCode
-     * 
+     *
      * @return true if deleted, false if not found
      */
     boolean deleteByFlowCode(String flowCode);

@@ -1,7 +1,6 @@
 package com.bananice.businesstracer.domain.repository;
 
 import com.bananice.businesstracer.domain.model.FlowLog;
-
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -22,7 +21,7 @@ public interface FlowLogRepository {
 
     /**
      * Find all flow logs with pagination
-     * 
+     *
      * @param flowCode   optional filter by flowCode
      * @param businessId optional filter by businessId
      * @param pageNum    page number (1-based)

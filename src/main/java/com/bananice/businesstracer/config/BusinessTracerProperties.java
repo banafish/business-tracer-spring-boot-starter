@@ -1,11 +1,10 @@
 package com.bananice.businesstracer.config;
 
 import com.bananice.businesstracer.domain.model.DslConfig;
-import lombok.Data;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-
 import java.util.ArrayList;
 import java.util.List;
+import lombok.Data;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
  * Configuration properties for Business Tracer

@@ -4,17 +4,15 @@ import com.bananice.businesstracer.domain.model.alert.AlertChannel;
 import com.bananice.businesstracer.domain.model.alert.AlertDispatchLog;
 import com.bananice.businesstracer.domain.model.alert.AlertEvent;
 import com.bananice.businesstracer.domain.model.alert.AlertStatus;
-import com.bananice.businesstracer.domain.model.alert.AlertType;
 import com.bananice.businesstracer.domain.repository.alert.AlertChannelRepository;
 import com.bananice.businesstracer.domain.repository.alert.AlertDispatchLogRepository;
 import com.bananice.businesstracer.infrastructure.alert.channel.AlertChannelSender;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 
 /**
  * Dispatch alert events to enabled channels.
@@ -28,11 +26,12 @@ public class AlertDispatchService {
     private final long maxAttemptTimeoutMs;
     private final int maxRetries;
 
-    public AlertDispatchService(AlertChannelRepository alertChannelRepository,
-                                AlertDispatchLogRepository alertDispatchLogRepository,
-                                List<AlertChannelSender> channelSenders,
-                                @Value("${business-tracer.alert.dispatch-attempt-timeout-ms:1000}") long maxAttemptTimeoutMs,
-                                @Value("${business-tracer.alert.dispatch-max-retries:1}") int maxRetries) {
+    public AlertDispatchService(
+            AlertChannelRepository alertChannelRepository,
+            AlertDispatchLogRepository alertDispatchLogRepository,
+            List<AlertChannelSender> channelSenders,
+            @Value("${business-tracer.alert.dispatch-attempt-timeout-ms:1000}") long maxAttemptTimeoutMs,
+            @Value("${business-tracer.alert.dispatch-max-retries:1}") int maxRetries) {
         this.alertChannelRepository = alertChannelRepository;
         this.alertDispatchLogRepository = alertDispatchLogRepository;
         this.channelSenders = channelSenders;
@@ -63,7 +62,8 @@ public class AlertDispatchService {
                 .alertType(aggregationResult.getAlertType())
                 .status(AlertStatus.NEW)
                 .aggregateKey(aggregationResult.getAggregateKey())
-                .message(String.format("Aggregated alert %s count=%d window=[%s,%s)",
+                .message(String.format(
+                        "Aggregated alert %s count=%d window=[%s,%s)",
                         aggregationResult.getAggregateKey(),
                         aggregationResult.getCount(),
                         aggregationResult.getBucketStart(),
@@ -127,8 +127,13 @@ public class AlertDispatchService {
         return null;
     }
 
-    private void writeLog(AlertEvent event, AlertChannel channel, AlertStatus status,
-                          String response, LocalDateTime dispatchTime, int retryCount) {
+    private void writeLog(
+            AlertEvent event,
+            AlertChannel channel,
+            AlertStatus status,
+            String response,
+            LocalDateTime dispatchTime,
+            int retryCount) {
         AlertDispatchLog log = AlertDispatchLog.builder()
                 .eventId(event.getId())
                 .channelId(channel.getId())

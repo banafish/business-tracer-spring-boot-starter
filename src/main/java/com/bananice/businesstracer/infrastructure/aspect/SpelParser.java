@@ -1,5 +1,9 @@
 package com.bananice.businesstracer.infrastructure.aspect;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.lang.reflect.Method;
+import java.util.Collection;
+import java.util.Map;
 import org.springframework.core.DefaultParameterNameDiscoverer;
 import org.springframework.core.ParameterNameDiscoverer;
 import org.springframework.expression.Expression;
@@ -7,12 +11,6 @@ import org.springframework.expression.ExpressionParser;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.stereotype.Component;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import java.lang.reflect.Method;
-import java.util.Collection;
-import java.util.Map;
 import org.springframework.util.ConcurrentReferenceHashMap;
 
 @Component
@@ -65,7 +63,9 @@ public class SpelParser {
         if (value instanceof String) {
             return (String) value;
         }
-        if (value instanceof Map || value instanceof Collection || value.getClass().isArray()) {
+        if (value instanceof Map
+                || value instanceof Collection
+                || value.getClass().isArray()) {
             try {
                 return objectMapper.writeValueAsString(value);
             } catch (Exception e) {

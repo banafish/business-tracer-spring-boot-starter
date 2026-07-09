@@ -1,9 +1,8 @@
 package com.bananice.businesstracer.domain.model.alert;
 
+import java.time.LocalDateTime;
 import lombok.Builder;
 import lombok.Data;
-
-import java.time.LocalDateTime;
 
 /**
  * Alert event domain entity.

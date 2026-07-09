@@ -8,13 +8,12 @@ import com.bananice.businesstracer.domain.model.alert.AlertEvent;
 import com.bananice.businesstracer.domain.repository.DetailLogRepository;
 import com.bananice.businesstracer.domain.repository.NodeLogRepository;
 import com.bananice.businesstracer.domain.repository.alert.AlertEventRepository;
+import java.util.Collections;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-
-import java.util.Collections;
-import java.util.List;
 
 /**
  * Service dedicated to saving logs asynchronously to prevent blocking the main business execution thread.
@@ -70,7 +69,8 @@ public class TraceAsyncLogService {
             events = Collections.emptyList();
         }
         for (AlertEvent event : events) {
-            String dedupKey = buildNodeAlertDedupKey(nodeLog.getNodeId(), event.getAlertType().name());
+            String dedupKey = buildNodeAlertDedupKey(
+                    nodeLog.getNodeId(), event.getAlertType().name());
             if (alertEventRepository.existsByAggregateKey(dedupKey)) {
                 continue;
             }

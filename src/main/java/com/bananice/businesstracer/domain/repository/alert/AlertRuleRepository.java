@@ -3,7 +3,6 @@ package com.bananice.businesstracer.domain.repository.alert;
 import com.bananice.businesstracer.domain.model.alert.AlertRule;
 import com.bananice.businesstracer.domain.model.alert.AlertScopeType;
 import com.bananice.businesstracer.domain.model.alert.AlertType;
-
 import java.util.List;
 
 /**

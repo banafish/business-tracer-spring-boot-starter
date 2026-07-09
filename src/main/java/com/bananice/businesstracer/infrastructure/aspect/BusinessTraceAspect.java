@@ -6,6 +6,9 @@ import com.bananice.businesstracer.domain.model.NodeLog;
 import com.bananice.businesstracer.domain.model.TraceStatus;
 import com.bananice.businesstracer.infrastructure.context.TraceContext;
 import com.bananice.businesstracer.infrastructure.context.TraceContextHolder;
+import java.lang.reflect.Method;
+import java.time.LocalDateTime;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -15,10 +18,6 @@ import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
-
-import java.lang.reflect.Method;
-import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Aspect
 @Component
@@ -71,8 +70,20 @@ public class BusinessTraceAspect {
         } finally {
             long costTime = System.currentTimeMillis() - startTime;
             String outputParamsRaw = resolveOutputParams(businessTrace, method, args, result, exceptionToThrow);
-            NodeLog logRecord = buildNodeLog(businessId, code, name, traceId, nodeId, parentNodeId,
-                    businessTrace, method, costTime, exceptionToThrow, newContext, inputParamsRaw, outputParamsRaw);
+            NodeLog logRecord = buildNodeLog(
+                    businessId,
+                    code,
+                    name,
+                    traceId,
+                    nodeId,
+                    parentNodeId,
+                    businessTrace,
+                    method,
+                    costTime,
+                    exceptionToThrow,
+                    newContext,
+                    inputParamsRaw,
+                    outputParamsRaw);
             saveAndRecordFlowLogs(logRecord, code, businessId, exceptionToThrow, newContext);
             restoreContext(parentContext);
         }
@@ -107,8 +118,8 @@ public class BusinessTraceAspect {
         return null;
     }
 
-    private String resolveOutputParams(BusinessTrace businessTrace, Method method, Object[] args,
-            Object result, Throwable exception) {
+    private String resolveOutputParams(
+            BusinessTrace businessTrace, Method method, Object[] args, Object result, Throwable exception) {
         if (exception != null) {
             return null;
         }
@@ -122,11 +133,20 @@ public class BusinessTraceAspect {
         return null;
     }
 
-    private NodeLog buildNodeLog(String businessId, String code, String name,
-            String traceId, String nodeId, String parentNodeId,
-            BusinessTrace businessTrace, Method method,
-            long costTime, Throwable exception,
-            TraceContext context, String inputParams, String outputParams) {
+    private NodeLog buildNodeLog(
+            String businessId,
+            String code,
+            String name,
+            String traceId,
+            String nodeId,
+            String parentNodeId,
+            BusinessTrace businessTrace,
+            Method method,
+            long costTime,
+            Throwable exception,
+            TraceContext context,
+            String inputParams,
+            String outputParams) {
         boolean hasFailed = exception != null || context.isErrorRecorded();
         String status = hasFailed ? TraceStatus.FAILED.getValue() : TraceStatus.COMPLETED.getValue();
         String exceptionMsg = exception != null ? exception.toString() : null;
@@ -149,8 +169,8 @@ public class BusinessTraceAspect {
                 .build();
     }
 
-    private void saveAndRecordFlowLogs(NodeLog logRecord, String code, String businessId,
-            Throwable exception, TraceContext context) {
+    private void saveAndRecordFlowLogs(
+            NodeLog logRecord, String code, String businessId, Throwable exception, TraceContext context) {
         boolean hasFailed = exception != null || context.isErrorRecorded();
         traceAsyncLogService.saveNodeLogAndFlowLogsAsync(logRecord, code, businessId, hasFailed);
     }

@@ -1,12 +1,11 @@
 package com.bananice.businesstracer.infrastructure.registry;
 
-import lombok.Data;
-import lombok.AllArgsConstructor;
-import org.springframework.stereotype.Component;
-
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import org.springframework.stereotype.Component;
 
 /**
  * Registry for storing all @BusinessTrace annotated node information.
@@ -24,7 +23,7 @@ public class BusinessTraceRegistry {
 
     /**
      * Register a node
-     * 
+     *
      * @param code node code
      * @param name node display name
      */
@@ -34,7 +33,7 @@ public class BusinessTraceRegistry {
 
     /**
      * Get all registered nodes
-     * 
+     *
      * @return collection of all node info
      */
     public Collection<NodeInfo> getAllNodes() {
@@ -43,7 +42,7 @@ public class BusinessTraceRegistry {
 
     /**
      * Get node info by code
-     * 
+     *
      * @param code node code
      * @return NodeInfo or null if not found
      */
@@ -53,7 +52,7 @@ public class BusinessTraceRegistry {
 
     /**
      * Check if a node is registered
-     * 
+     *
      * @param code node code
      * @return true if registered
      */

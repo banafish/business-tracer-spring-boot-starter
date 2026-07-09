@@ -3,9 +3,8 @@ package com.bananice.businesstracer.infrastructure.persistence.po;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import lombok.Data;
-
 import java.time.LocalDateTime;
+import lombok.Data;
 
 /**
  * Persistence Object for business_flow_dsl table

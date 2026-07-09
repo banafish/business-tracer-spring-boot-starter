@@ -2,11 +2,10 @@ package com.bananice.businesstracer.presentation.http;
 
 import com.bananice.businesstracer.application.DslService;
 import com.bananice.businesstracer.domain.model.DslConfig;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 /**
  * REST Controller for DSL CRUD operations
@@ -58,8 +57,7 @@ public class DslController {
      */
     @PutMapping("/{flowCode}")
     public ResponseEntity<ApiResult<DslConfig>> updateDsl(
-            @PathVariable String flowCode,
-            @RequestBody DslConfig dslConfig) {
+            @PathVariable String flowCode, @RequestBody DslConfig dslConfig) {
         try {
             DslConfig updated = dslService.updateDsl(flowCode, dslConfig);
             return ResponseEntity.ok(ApiResult.success(updated, "DSL updated successfully"));

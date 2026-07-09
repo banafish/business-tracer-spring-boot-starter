@@ -1,7 +1,6 @@
 package com.bananice.businesstracer.domain.repository;
 
 import com.bananice.businesstracer.domain.model.DetailLog;
-
 import java.util.List;
 
 /**

@@ -1,18 +1,17 @@
 package com.bananice.businesstracer.infrastructure.persistence.alert;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.bananice.businesstracer.domain.model.alert.AlertChannel;
 import com.bananice.businesstracer.domain.model.alert.AlertChannelType;
 import com.bananice.businesstracer.domain.repository.alert.AlertChannelRepository;
 import com.bananice.businesstracer.infrastructure.persistence.mapper.alert.AlertChannelMapper;
 import com.bananice.businesstracer.infrastructure.persistence.po.alert.AlertChannelPO;
-import lombok.RequiredArgsConstructor;
-import org.springframework.beans.BeanUtils;
-import org.springframework.stereotype.Repository;
-
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.BeanUtils;
+import org.springframework.stereotype.Repository;
 
 @Repository
 @RequiredArgsConstructor
@@ -28,7 +27,10 @@ public class AlertChannelRepositoryImpl implements AlertChannelRepository {
 
         AlertChannelPO po = new AlertChannelPO();
         BeanUtils.copyProperties(alertChannel, po);
-        po.setChannelType(alertChannel.getChannelType() == null ? null : alertChannel.getChannelType().name());
+        po.setChannelType(
+                alertChannel.getChannelType() == null
+                        ? null
+                        : alertChannel.getChannelType().name());
         po.setChannelName(alertChannel.getName());
         po.setConfigJson(alertChannel.getTarget());
 

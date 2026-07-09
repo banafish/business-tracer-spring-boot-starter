@@ -2,12 +2,11 @@ package com.bananice.businesstracer.infrastructure.alert.job;
 
 import com.bananice.businesstracer.config.BusinessTracerProperties;
 import com.bananice.businesstracer.domain.repository.alert.AlertEventRepository;
+import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-
-import java.time.LocalDateTime;
 
 /**
  * Periodic cleanup job for alert history data retention.

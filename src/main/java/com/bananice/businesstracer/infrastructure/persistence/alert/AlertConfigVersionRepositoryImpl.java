@@ -1,9 +1,9 @@
 package com.bananice.businesstracer.infrastructure.persistence.alert;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.bananice.businesstracer.domain.repository.alert.AlertConfigVersionRepository;
 import com.bananice.businesstracer.infrastructure.persistence.mapper.alert.AlertConfigVersionMapper;
 import com.bananice.businesstracer.infrastructure.persistence.po.alert.AlertConfigVersionPO;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 

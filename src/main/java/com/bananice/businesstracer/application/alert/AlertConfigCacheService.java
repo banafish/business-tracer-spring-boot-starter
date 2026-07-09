@@ -4,14 +4,13 @@ import com.bananice.businesstracer.domain.model.alert.AlertRule;
 import com.bananice.businesstracer.domain.model.alert.AlertScopeType;
 import com.bananice.businesstracer.domain.repository.alert.AlertConfigVersionRepository;
 import com.bananice.businesstracer.domain.repository.alert.AlertRuleRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 /**
  * In-memory cache service for alert rules.
@@ -23,8 +22,7 @@ public class AlertConfigCacheService {
     private final AlertRuleRepository alertRuleRepository;
     private final AlertConfigVersionRepository alertConfigVersionRepository;
 
-    private final AtomicReference<List<AlertRule>> localCacheRef =
-            new AtomicReference<>(Collections.emptyList());
+    private final AtomicReference<List<AlertRule>> localCacheRef = new AtomicReference<>(Collections.emptyList());
 
     private volatile Long localPublishedVersion;
 

@@ -1,7 +1,6 @@
 package com.bananice.businesstracer.domain.repository.alert;
 
 import com.bananice.businesstracer.domain.model.alert.AlertChannel;
-
 import java.util.List;
 
 /**

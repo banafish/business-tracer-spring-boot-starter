@@ -1,20 +1,19 @@
 package com.bananice.businesstracer.infrastructure.persistence.alert;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.bananice.businesstracer.domain.model.alert.AlertRule;
 import com.bananice.businesstracer.domain.model.alert.AlertScopeType;
 import com.bananice.businesstracer.domain.model.alert.AlertType;
 import com.bananice.businesstracer.domain.repository.alert.AlertRuleRepository;
 import com.bananice.businesstracer.infrastructure.persistence.mapper.alert.AlertRuleMapper;
 import com.bananice.businesstracer.infrastructure.persistence.po.alert.AlertRulePO;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
-
-import java.util.List;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Repository
 @RequiredArgsConstructor
@@ -28,12 +27,16 @@ public class AlertRuleRepositoryImpl implements AlertRuleRepository {
             return;
         }
 
-        AlertRulePO existing = selectByScope(alertRule.getScopeType(), alertRule.getFlowCode(), alertRule.getScopeRef());
+        AlertRulePO existing =
+                selectByScope(alertRule.getScopeType(), alertRule.getFlowCode(), alertRule.getScopeRef());
 
         AlertRulePO po = new AlertRulePO();
         BeanUtils.copyProperties(alertRule, po);
         po.setRuleName(alertRule.getName());
-        po.setAlertType(alertRule.getAlertType() == null ? null : alertRule.getAlertType().name());
+        po.setAlertType(
+                alertRule.getAlertType() == null
+                        ? null
+                        : alertRule.getAlertType().name());
         po.setScopeType(alertRule.getScopeType().name());
         po.setScopeCode(alertRule.getScopeRef());
 

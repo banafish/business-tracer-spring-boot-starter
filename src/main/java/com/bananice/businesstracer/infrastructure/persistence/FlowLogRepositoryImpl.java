@@ -1,19 +1,18 @@
 package com.bananice.businesstracer.infrastructure.persistence;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.bananice.businesstracer.domain.model.FlowLog;
 import com.bananice.businesstracer.domain.repository.FlowLogRepository;
 import com.bananice.businesstracer.infrastructure.persistence.mapper.FlowLogMapper;
 import com.bananice.businesstracer.infrastructure.persistence.po.FlowLogPO;
-import lombok.RequiredArgsConstructor;
-import org.springframework.beans.BeanUtils;
-import org.springframework.stereotype.Repository;
-import org.springframework.util.StringUtils;
-
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.BeanUtils;
+import org.springframework.stereotype.Repository;
+import org.springframework.util.StringUtils;
 
 /**
  * Infrastructure implementation of the Flow Log Repository
@@ -125,9 +124,7 @@ public class FlowLogRepositoryImpl implements FlowLogRepository {
             return Collections.emptyList();
         }
         QueryWrapper<FlowLogPO> query = new QueryWrapper<>();
-        query.le("create_time", threshold)
-                .orderByAsc("create_time")
-                .last("LIMIT " + limit);
+        query.le("create_time", threshold).orderByAsc("create_time").last("LIMIT " + limit);
 
         List<FlowLogPO> pos = flowLogMapper.selectList(query);
         return pos.stream().map(this::toDomain).collect(Collectors.toList());

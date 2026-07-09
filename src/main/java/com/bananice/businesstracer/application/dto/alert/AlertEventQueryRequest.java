@@ -2,9 +2,8 @@ package com.bananice.businesstracer.application.dto.alert;
 
 import com.bananice.businesstracer.domain.model.alert.AlertStatus;
 import com.bananice.businesstracer.domain.model.alert.AlertType;
-import lombok.Data;
-
 import java.time.LocalDateTime;
+import lombok.Data;
 
 @Data
 public class AlertEventQueryRequest {

@@ -4,13 +4,11 @@ import com.bananice.businesstracer.application.alert.AlertConfigCacheService;
 import com.bananice.businesstracer.application.dto.alert.AlertRuleUpsertRequest;
 import com.bananice.businesstracer.domain.model.alert.AlertRule;
 import com.bananice.businesstracer.domain.model.alert.AlertScopeType;
+import java.util.List;
+import javax.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-
-import javax.validation.Valid;
 
 @RestController
 @RequestMapping("/business-tracer/api/alerts/rules")
@@ -25,9 +23,10 @@ public class AlertRuleController {
     }
 
     @PutMapping("/{scopeType}/{scopeCode}")
-    public ResponseEntity<ApiResult<Void>> upsertRule(@PathVariable String scopeType,
-                                                      @PathVariable String scopeCode,
-                                                      @Valid @RequestBody AlertRuleUpsertRequest request) {
+    public ResponseEntity<ApiResult<Void>> upsertRule(
+            @PathVariable String scopeType,
+            @PathVariable String scopeCode,
+            @Valid @RequestBody AlertRuleUpsertRequest request) {
         AlertScopeType parsedScopeType;
         try {
             parsedScopeType = AlertScopeType.valueOf(scopeType);
@@ -35,7 +34,10 @@ public class AlertRuleController {
             return ResponseEntity.ok(ApiResult.error(400, "invalid scopeType: " + scopeType));
         }
 
-        if (parsedScopeType == AlertScopeType.NODE && (request == null || request.getFlowCode() == null || request.getFlowCode().trim().isEmpty())) {
+        if (parsedScopeType == AlertScopeType.NODE
+                && (request == null
+                        || request.getFlowCode() == null
+                        || request.getFlowCode().trim().isEmpty())) {
             return ResponseEntity.ok(ApiResult.error(400, "flowCode is required when scopeType is NODE"));
         }
 

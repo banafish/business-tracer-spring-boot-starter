@@ -1,9 +1,8 @@
 package com.bananice.businesstracer.infrastructure.persistence.mapper.alert;
 
-import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.bananice.businesstracer.infrastructure.persistence.po.alert.AlertEventPO;
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface AlertEventMapper extends BaseMapper<AlertEventPO> {
-}
+public interface AlertEventMapper extends BaseMapper<AlertEventPO> {}

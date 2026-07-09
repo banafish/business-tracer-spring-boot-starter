@@ -7,13 +7,12 @@ import com.bananice.businesstracer.domain.model.alert.AlertStatus;
 import com.bananice.businesstracer.domain.model.alert.AlertType;
 import com.bananice.businesstracer.domain.repository.alert.AlertDispatchLogRepository;
 import com.bananice.businesstracer.domain.repository.alert.AlertEventRepository;
+import java.time.LocalDateTime;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.time.LocalDateTime;
-import java.util.List;
 
 @RestController
 @RequestMapping("/business-tracer/api/alerts/events")
@@ -25,8 +24,10 @@ public class AlertHistoryController {
 
     @GetMapping
     public ResponseEntity<ApiResult<PageResult<AlertEvent>>> queryEvents(
-            @RequestParam(value = "startTime", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTime,
-            @RequestParam(value = "endTime", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime,
+            @RequestParam(value = "startTime", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+                    LocalDateTime startTime,
+            @RequestParam(value = "endTime", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+                    LocalDateTime endTime,
             @RequestParam(value = "alertType", required = false) AlertType alertType,
             @RequestParam(value = "status", required = false) AlertStatus status,
             @RequestParam(value = "flowCode", required = false) String flowCode,
@@ -34,7 +35,8 @@ public class AlertHistoryController {
             @RequestParam(value = "businessId", required = false) String businessId,
             @RequestParam(value = "pageNum", defaultValue = "1") int pageNum,
             @RequestParam(value = "pageSize", defaultValue = "10") int pageSize) {
-        List<AlertEvent> list = alertEventRepository.query(startTime, endTime, alertType, status, flowCode, nodeCode, businessId, pageNum, pageSize);
+        List<AlertEvent> list = alertEventRepository.query(
+                startTime, endTime, alertType, status, flowCode, nodeCode, businessId, pageNum, pageSize);
         long total = alertEventRepository.count(startTime, endTime, alertType, status, flowCode, nodeCode, businessId);
         return ResponseEntity.ok(ApiResult.success(PageResult.of(total, pageNum, pageSize, list)));
     }

@@ -8,15 +8,14 @@ import com.bananice.businesstracer.domain.model.NodeLog;
 import com.bananice.businesstracer.domain.model.TraceStatus;
 import com.bananice.businesstracer.domain.repository.FlowLogRepository;
 import com.bananice.businesstracer.domain.repository.NodeLogRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
 
 /**
  * Application service for Flow Log operations
@@ -104,16 +103,13 @@ public class FlowLogService {
             return;
         }
 
-        if (businessId == null || flowCode == null)
-            return;
+        if (businessId == null || flowCode == null) return;
 
         DslConfig dsl = dslService.getDslByFlowCode(flowCode);
-        if (dsl == null || dsl.getNodes() == null || dsl.getNodes().isEmpty())
-            return;
+        if (dsl == null || dsl.getNodes() == null || dsl.getNodes().isEmpty()) return;
 
         List<String> endNodeCodes = DslNode.findAllEndNodeCodes(dsl.getNodes());
-        if (endNodeCodes.isEmpty())
-            return; // No end nodes defined
+        if (endNodeCodes.isEmpty()) return; // No end nodes defined
 
         List<NodeLog> nodeLogs = nodeLogRepository.findByBusinessId(businessId);
         List<String> executedCodes = nodeLogs.stream()
@@ -146,8 +142,7 @@ public class FlowLogService {
      * Mark all flows associated with this businessId as FAILED
      */
     public void markFlowsAsFailed(String businessId) {
-        if (businessId == null)
-            return;
+        if (businessId == null) return;
         flowLogRepository.updateStatusByBusinessId(businessId, TraceStatus.FAILED.getValue());
     }
 

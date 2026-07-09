@@ -6,13 +6,12 @@ import com.bananice.businesstracer.domain.model.alert.AlertEvent;
 import com.bananice.businesstracer.domain.model.alert.AlertStatus;
 import com.bananice.businesstracer.domain.model.alert.AlertType;
 import com.bananice.businesstracer.domain.repository.alert.AlertEventRepository;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 /**
  * Evaluate runtime trace signals into alert events.
@@ -23,8 +22,9 @@ public class AlertEvaluateService {
     private final AlertEventRepository alertEventRepository;
     private final long slowNodeThresholdMs;
 
-    public AlertEvaluateService(AlertEventRepository alertEventRepository,
-                                @Value("${business-tracer.alert.slow-node-threshold-ms:2000}") long slowNodeThresholdMs) {
+    public AlertEvaluateService(
+            AlertEventRepository alertEventRepository,
+            @Value("${business-tracer.alert.slow-node-threshold-ms:2000}") long slowNodeThresholdMs) {
         this.alertEventRepository = alertEventRepository;
         this.slowNodeThresholdMs = slowNodeThresholdMs;
     }
@@ -39,8 +39,7 @@ public class AlertEvaluateService {
             events.add(buildNodeEvent(nodeLog, AlertType.NODE_FAILED, "node failed"));
         }
         if (nodeLog.getCostTime() != null && nodeLog.getCostTime() > slowNodeThresholdMs) {
-            events.add(buildNodeEvent(nodeLog, AlertType.SLOW_NODE,
-                    "node slow, cost=" + nodeLog.getCostTime() + "ms"));
+            events.add(buildNodeEvent(nodeLog, AlertType.SLOW_NODE, "node slow, cost=" + nodeLog.getCostTime() + "ms"));
         }
         return events;
     }

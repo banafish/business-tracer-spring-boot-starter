@@ -6,11 +6,10 @@ import com.bananice.businesstracer.domain.model.DslConfig;
 import com.bananice.businesstracer.domain.model.DslNode;
 import com.bananice.businesstracer.domain.model.NodeLog;
 import com.bananice.businesstracer.domain.repository.DslConfigRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-
 import java.util.*;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 /**
  * Service for DSL operations
@@ -109,9 +108,8 @@ public class DslService {
         }
 
         // Group logs by code
-        Map<String, List<NodeLog>> logsByCode = logs.stream()
-                .filter(log -> log.getCode() != null)
-                .collect(Collectors.groupingBy(NodeLog::getCode));
+        Map<String, List<NodeLog>> logsByCode =
+                logs.stream().filter(log -> log.getCode() != null).collect(Collectors.groupingBy(NodeLog::getCode));
 
         // Build tree structure according to DSL
         List<DslRenderNode> treeNodes = new ArrayList<>();

@@ -1,10 +1,9 @@
 package com.bananice.businesstracer.infrastructure.context;
 
+import java.util.Map;
 import org.slf4j.MDC;
 import org.springframework.core.task.TaskDecorator;
 import org.springframework.lang.NonNull;
-
-import java.util.Map;
 
 /**
  * TaskDecorator to propagate TraceContext and MDC to async threads.

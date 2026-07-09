@@ -1,8 +1,8 @@
 package com.bananice.businesstracer.domain.model;
 
+import java.time.LocalDateTime;
 import lombok.Builder;
 import lombok.Data;
-import java.time.LocalDateTime;
 
 /**
  * Flow Log Domain Entity - records the association between DSL flow and

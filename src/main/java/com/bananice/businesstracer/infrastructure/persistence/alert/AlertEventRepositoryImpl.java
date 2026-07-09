@@ -1,7 +1,5 @@
 package com.bananice.businesstracer.infrastructure.persistence.alert;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.bananice.businesstracer.domain.model.alert.AlertEvent;
 import com.bananice.businesstracer.domain.model.alert.AlertStatus;
 import com.bananice.businesstracer.domain.model.alert.AlertType;
@@ -9,15 +7,16 @@ import com.bananice.businesstracer.domain.repository.alert.AlertEventRepository;
 import com.bananice.businesstracer.infrastructure.persistence.mapper.alert.AlertDispatchLogMapper;
 import com.bananice.businesstracer.infrastructure.persistence.mapper.alert.AlertEventMapper;
 import com.bananice.businesstracer.infrastructure.persistence.po.alert.AlertEventPO;
-import lombok.RequiredArgsConstructor;
-import org.springframework.beans.BeanUtils;
-import org.springframework.stereotype.Repository;
-import org.springframework.util.StringUtils;
-
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.BeanUtils;
+import org.springframework.stereotype.Repository;
+import org.springframework.util.StringUtils;
 
 @Repository
 @RequiredArgsConstructor
@@ -35,8 +34,12 @@ public class AlertEventRepositoryImpl implements AlertEventRepository {
         AlertEventPO po = new AlertEventPO();
         BeanUtils.copyProperties(alertEvent, po);
         po.setEventCode(UUID.randomUUID().toString().replace("-", ""));
-        po.setAlertType(alertEvent.getAlertType() == null ? null : alertEvent.getAlertType().name());
-        po.setStatus(alertEvent.getStatus() == null ? null : alertEvent.getStatus().name());
+        po.setAlertType(
+                alertEvent.getAlertType() == null
+                        ? null
+                        : alertEvent.getAlertType().name());
+        po.setStatus(
+                alertEvent.getStatus() == null ? null : alertEvent.getStatus().name());
         po.setContent(alertEvent.getMessage());
         po.setLastOccurTime(alertEvent.getOccurredAt());
         po.setCreateTime(alertEvent.getOccurredAt());
@@ -54,11 +57,18 @@ public class AlertEventRepositoryImpl implements AlertEventRepository {
     }
 
     @Override
-    public List<AlertEvent> query(LocalDateTime startTime, LocalDateTime endTime,
-                                  AlertType alertType, AlertStatus status,
-                                  String flowCode, String nodeCode, String businessId,
-                                  int pageNum, int pageSize) {
-        QueryWrapper<AlertEventPO> query = buildQuery(startTime, endTime, alertType, status, flowCode, nodeCode, businessId);
+    public List<AlertEvent> query(
+            LocalDateTime startTime,
+            LocalDateTime endTime,
+            AlertType alertType,
+            AlertStatus status,
+            String flowCode,
+            String nodeCode,
+            String businessId,
+            int pageNum,
+            int pageSize) {
+        QueryWrapper<AlertEventPO> query =
+                buildQuery(startTime, endTime, alertType, status, flowCode, nodeCode, businessId);
         query.orderByDesc("create_time");
         int offset = (pageNum - 1) * pageSize;
         query.last("LIMIT " + offset + ", " + pageSize);
@@ -67,10 +77,16 @@ public class AlertEventRepositoryImpl implements AlertEventRepository {
     }
 
     @Override
-    public long count(LocalDateTime startTime, LocalDateTime endTime,
-                      AlertType alertType, AlertStatus status,
-                      String flowCode, String nodeCode, String businessId) {
-        QueryWrapper<AlertEventPO> query = buildQuery(startTime, endTime, alertType, status, flowCode, nodeCode, businessId);
+    public long count(
+            LocalDateTime startTime,
+            LocalDateTime endTime,
+            AlertType alertType,
+            AlertStatus status,
+            String flowCode,
+            String nodeCode,
+            String businessId) {
+        QueryWrapper<AlertEventPO> query =
+                buildQuery(startTime, endTime, alertType, status, flowCode, nodeCode, businessId);
         return alertEventMapper.selectCount(query);
     }
 
@@ -100,9 +116,7 @@ public class AlertEventRepositoryImpl implements AlertEventRepository {
             return;
         }
         UpdateWrapper<AlertEventPO> update = new UpdateWrapper<>();
-        update.eq("id", eventId)
-                .set("content", message)
-                .set("last_occur_time", occurredAt);
+        update.eq("id", eventId).set("content", message).set("last_occur_time", occurredAt);
         alertEventMapper.update(null, update);
     }
 
@@ -112,9 +126,7 @@ public class AlertEventRepositoryImpl implements AlertEventRepository {
             return;
         }
         UpdateWrapper<AlertEventPO> update = new UpdateWrapper<>();
-        update.eq("id", eventId)
-                .set("status", AlertStatus.SENT.name())
-                .set("last_occur_time", closedAt);
+        update.eq("id", eventId).set("status", AlertStatus.SENT.name()).set("last_occur_time", closedAt);
         alertEventMapper.update(null, update);
     }
 
@@ -135,16 +147,22 @@ public class AlertEventRepositoryImpl implements AlertEventRepository {
 
         QueryWrapper<AlertEventPO> eventDeleteQuery = new QueryWrapper<>();
         eventDeleteQuery.lt("create_time", cutoffTime);
-        QueryWrapper<com.bananice.businesstracer.infrastructure.persistence.po.alert.AlertDispatchLogPO> dispatchDeleteQuery = new QueryWrapper<>();
+        QueryWrapper<com.bananice.businesstracer.infrastructure.persistence.po.alert.AlertDispatchLogPO>
+                dispatchDeleteQuery = new QueryWrapper<>();
         dispatchDeleteQuery.in("event_id", oldEventIds);
 
         alertDispatchLogMapper.delete(dispatchDeleteQuery);
         alertEventMapper.delete(eventDeleteQuery);
     }
 
-    private QueryWrapper<AlertEventPO> buildQuery(LocalDateTime startTime, LocalDateTime endTime,
-                                                  AlertType alertType, AlertStatus status,
-                                                  String flowCode, String nodeCode, String businessId) {
+    private QueryWrapper<AlertEventPO> buildQuery(
+            LocalDateTime startTime,
+            LocalDateTime endTime,
+            AlertType alertType,
+            AlertStatus status,
+            String flowCode,
+            String nodeCode,
+            String businessId) {
         QueryWrapper<AlertEventPO> query = new QueryWrapper<>();
         if (startTime != null) {
             query.ge("create_time", startTime);

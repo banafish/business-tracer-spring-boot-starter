@@ -2,10 +2,9 @@ package com.bananice.businesstracer.fixture;
 
 import com.bananice.businesstracer.api.BusinessTrace;
 import com.bananice.businesstracer.api.BusinessTracer;
+import javax.annotation.Resource;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
-
-import javax.annotation.Resource;
 
 /**
  * 专门用于集成测试 BusinessTraceAspect 的测试服务。
@@ -32,7 +31,13 @@ public class TracedTestService {
     /**
      * 完整场景：含 name、operation、inputParams、outputParams
      */
-    @BusinessTrace(code = "FULL_NODE", name = "完整节点", key = "#bizId", operation = "执行完整操作", inputParams = "#bizId", outputParams = "#result")
+    @BusinessTrace(
+            code = "FULL_NODE",
+            name = "完整节点",
+            key = "#bizId",
+            operation = "执行完整操作",
+            inputParams = "#bizId",
+            outputParams = "#result")
     public String fullMethod(String bizId) {
         return "result-" + bizId;
     }
