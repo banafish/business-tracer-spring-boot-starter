@@ -5,6 +5,7 @@ import com.bananice.businesstracer.domain.model.DetailLog;
 import com.bananice.businesstracer.domain.model.TraceStatus;
 import com.bananice.businesstracer.infrastructure.context.TraceContext;
 import com.bananice.businesstracer.infrastructure.context.TraceContextHolder;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.time.LocalDateTime;
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
@@ -21,6 +22,11 @@ public class BusinessTracer implements ApplicationContextAware {
     private static ApplicationContext applicationContext;
 
     @Override
+    @SuppressFBWarnings(
+            value = "ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD",
+            justification = "标准的 Spring ApplicationContextAware 静态持有者模式：BusinessTracer 对外是静态门面"
+                    + "（record/recordError），需要在启动期由 Spring 回调注入一次 context；"
+                    + "该写入发生在容器刷新阶段、任何业务流量之前，属有意设计而非并发缺陷")
     public void setApplicationContext(@NonNull ApplicationContext context) throws BeansException {
         applicationContext = context;
     }

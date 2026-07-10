@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+    <!-- 豁免原因：项目大量使用 Lombok @Data/@Builder 的 PO/DTO 数据载体，
+         EI_EXPOSE_REP/EI_EXPOSE_REP2（内部可变对象暴露）会被生成的 getter/setter
+         海量触发，逐一防御式拷贝对数据载体收益极低。仅豁免这两类，其余保持严格。
+         新增其他豁免时必须像本条一样写明原因。 -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+    </Match>
+</FindBugsFilter>
