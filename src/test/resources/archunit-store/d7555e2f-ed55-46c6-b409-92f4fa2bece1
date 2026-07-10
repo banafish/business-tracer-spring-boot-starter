@@ -1,0 +1,7 @@
+Method <com.bananice.businesstracer.api.BusinessTracer.record(java.lang.String)> calls method <com.bananice.businesstracer.infrastructure.context.TraceContext.getBusinessId()> in (BusinessTracer.java:53)
+Method <com.bananice.businesstracer.api.BusinessTracer.record(java.lang.String)> calls method <com.bananice.businesstracer.infrastructure.context.TraceContext.getNodeId()> in (BusinessTracer.java:54)
+Method <com.bananice.businesstracer.api.BusinessTracer.record(java.lang.String)> calls method <com.bananice.businesstracer.infrastructure.context.TraceContextHolder.getContext()> in (BusinessTracer.java:47)
+Method <com.bananice.businesstracer.api.BusinessTracer.recordError(java.lang.String)> calls method <com.bananice.businesstracer.infrastructure.context.TraceContext.getBusinessId()> in (BusinessTracer.java:82)
+Method <com.bananice.businesstracer.api.BusinessTracer.recordError(java.lang.String)> calls method <com.bananice.businesstracer.infrastructure.context.TraceContext.getNodeId()> in (BusinessTracer.java:83)
+Method <com.bananice.businesstracer.api.BusinessTracer.recordError(java.lang.String)> calls method <com.bananice.businesstracer.infrastructure.context.TraceContext.setErrorRecorded(boolean)> in (BusinessTracer.java:95)
+Method <com.bananice.businesstracer.api.BusinessTracer.recordError(java.lang.String)> calls method <com.bananice.businesstracer.infrastructure.context.TraceContextHolder.getContext()> in (BusinessTracer.java:76)

@@ -1,0 +1,5 @@
+#
+#Fri Jul 10 20:05:39 CST 2026
+no\ classes\ that\ reside\ in\ a\ package\ '..businesstracer.api..'\ should\ depend\ on\ classes\ that\ reside\ in\ any\ package\ ['..businesstracer.infrastructure..']=d7555e2f-ed55-46c6-b409-92f4fa2bece1
+no\ classes\ that\ reside\ in\ a\ package\ '..businesstracer.application..'\ should\ depend\ on\ classes\ that\ reside\ in\ any\ package\ ['..businesstracer.infrastructure..',\ '..businesstracer.presentation..',\ '..businesstracer.config..']=7369992e-2877-47ec-bebc-8210a28a0f49
+slices\ matching\ 'com.bananice.businesstracer.(*)..'\ should\ be\ free\ of\ cycles=7e0f2d61-8791-41e2-a515-d3f06bfe147f
