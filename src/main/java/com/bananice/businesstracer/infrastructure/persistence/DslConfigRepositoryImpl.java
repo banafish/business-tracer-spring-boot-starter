@@ -177,7 +177,9 @@ public class DslConfigRepositoryImpl implements DslConfigRepository {
             }
 
             return nodes;
-        } catch (Exception e) {
+        } catch (JsonProcessingException | RuntimeException e) {
+            // Drawflow JSON 来自外部存储，结构不可信：解析失败或结构不符（强转 CCE/NPE 等运行时异常）
+            // 都按"无法提取"处理，返回空列表。
             return Collections.emptyList();
         }
     }

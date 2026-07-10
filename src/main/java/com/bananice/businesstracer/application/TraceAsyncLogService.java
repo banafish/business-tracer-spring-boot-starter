@@ -8,7 +8,6 @@ import com.bananice.businesstracer.domain.model.alert.AlertEvent;
 import com.bananice.businesstracer.domain.repository.DetailLogRepository;
 import com.bananice.businesstracer.domain.repository.NodeLogRepository;
 import com.bananice.businesstracer.domain.repository.alert.AlertEventRepository;
-import java.util.Collections;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -65,9 +64,6 @@ public class TraceAsyncLogService {
 
     private void produceNodeAlerts(NodeLog nodeLog) {
         List<AlertEvent> events = alertEvaluateService.evaluateNode(nodeLog);
-        if (events == null) {
-            events = Collections.emptyList();
-        }
         for (AlertEvent event : events) {
             String dedupKey = buildNodeAlertDedupKey(
                     nodeLog.getNodeId(), event.getAlertType().name());
