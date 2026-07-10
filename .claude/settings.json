@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mvn -B verify:*)",
+      "Bash(mvn -B test:*)",
+      "Bash(mvn -B clean:*)",
+      "Bash(mvn -B compile:*)",
+      "Bash(mvn -B spotless:apply)",
+      "Bash(mvn -B spotless:check)",
+      "Bash(mvn verify:*)",
+      "Bash(mvn test:*)",
+      "Bash(mvn spotless:apply)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/format-java.ps1"
+          }
+        ]
+      }
+    ]
+  }
+}

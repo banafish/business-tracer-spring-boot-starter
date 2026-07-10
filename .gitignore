@@ -28,3 +28,6 @@ Thumbs.db
 
 ### Git worktrees ###
 .worktrees/
+
+### Claude Code local tools ###
+.claude/tools/
