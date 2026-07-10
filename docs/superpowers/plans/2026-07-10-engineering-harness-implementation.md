@@ -978,3 +978,17 @@ Expected: CI `success`。
 - [ ] **Step 4: 汇报**
 
 向用户汇报：实测覆盖率与设定阈值、SpotBugs 存量告警处理明细（修复几处/豁免几处及原因）、Enforcer 依赖收敛采用了哪条规则、hook 是否走了降级路径。
+
+---
+
+## 实施偏差记录（2026-07-10 执行完毕后补记）
+
+以下为执行过程中对计划文本的偏离，均保持规格意图：
+
+1. **Lombok pin 1.18.30**（commit aa0ad50）：Boot 2.7.12 托管的 1.18.26 不支持 javac 21，clean 构建必炸；计划编写时被增量编译掩盖，Task 2 质量审查发现后补入。
+2. **ArchUnit 切片模式 `(*)` → `(*)..`**（Task 7）：计划原模式只匹配顶层包直属类，实测抓不到任何嵌套包循环（与计划自身预期矛盾）；修正后真实冻结 4 组存量循环。
+3. **CI 用 Temurin 21**（规格正文写 17）：与本地构建 JDK 一致；规格约束为"JDK 17+"，enforcer 下限仍为 [17,)（palantir-java-format 2.50.0 实测为 Java 11 字节码，无需收紧）。
+4. **最终整体审查后的加固**（收尾 commit）：`archunit.properties` 的 `allowStoreCreation` 常态改为 `false`（防规则改动时静默重冻结，生成 store 需一次性 -D 开启）；application 分层规则补禁 `..api..`（无存量违规，store 随规则文本重生成）；pom 中 enforcer 移到 spotless 之前（环境卫兵先于格式化器报错）；`.gitignore` 补 `.claude/settings.local.json`。
+5. **TDD 红灯形态**（Task 8）：Groovy 动态编译使"类不存在"表现为运行时 `MissingPropertyException` 而非计划预期的编译错误，根因相同。
+6. **hook 走主路径**（Task 10）：palantir-java-format standalone CLI 与 Spotless 门禁输出逐字节一致（含 CRLF），降级路径未触发。
+7. **已知限制**：CI 中 surefire 失败时 JaCoCo HTML 报告不会生成（report 绑 test 阶段、失败即中止），此场景下 artifact 只含 surefire 报告；覆盖率门禁失败场景报告必然存在，可接受。
