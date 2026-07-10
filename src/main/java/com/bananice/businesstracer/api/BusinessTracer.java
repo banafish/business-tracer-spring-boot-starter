@@ -1,10 +1,9 @@
 package com.bananice.businesstracer.api;
 
 import com.bananice.businesstracer.application.TraceAsyncLogService;
+import com.bananice.businesstracer.application.TraceContextPort;
 import com.bananice.businesstracer.domain.model.DetailLog;
 import com.bananice.businesstracer.domain.model.TraceStatus;
-import com.bananice.businesstracer.infrastructure.context.TraceContext;
-import com.bananice.businesstracer.infrastructure.context.TraceContextHolder;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.time.LocalDateTime;
 import org.springframework.beans.BeansException;
@@ -38,20 +37,27 @@ public class BusinessTracer implements ApplicationContextAware {
         return applicationContext.getBean(TraceAsyncLogService.class);
     }
 
+    private static TraceContextPort getTraceContextPort() {
+        if (applicationContext == null) {
+            return null;
+        }
+        return applicationContext.getBean(TraceContextPort.class);
+    }
+
     /**
      * Record a detail log for the current business flow.
      *
      * @param content Detail content
      */
     public static void record(String content) {
-        TraceContext context = TraceContextHolder.getContext();
-        if (context == null) {
+        TraceContextPort context = getTraceContextPort();
+        if (context == null || !context.hasActiveTrace()) {
             return;
         }
 
         DetailLog log = DetailLog.builder()
-                .businessId(context.getBusinessId())
-                .parentNodeId(context.getNodeId())
+                .businessId(context.currentBusinessId())
+                .parentNodeId(context.currentNodeId())
                 .content(content)
                 .status(TraceStatus.NORMAL.getValue())
                 .createTime(LocalDateTime.now())
@@ -73,14 +79,14 @@ public class BusinessTracer implements ApplicationContextAware {
      * @param content Error detail content
      */
     public static void recordError(String content) {
-        TraceContext context = TraceContextHolder.getContext();
-        if (context == null) {
+        TraceContextPort context = getTraceContextPort();
+        if (context == null || !context.hasActiveTrace()) {
             return;
         }
 
         DetailLog log = DetailLog.builder()
-                .businessId(context.getBusinessId())
-                .parentNodeId(context.getNodeId())
+                .businessId(context.currentBusinessId())
+                .parentNodeId(context.currentNodeId())
                 .content(content)
                 .status(TraceStatus.FAILED.getValue())
                 .createTime(LocalDateTime.now())
@@ -92,6 +98,6 @@ public class BusinessTracer implements ApplicationContextAware {
         }
 
         // Set flag so the aspect knows to mark node and flows as FAILED
-        context.setErrorRecorded(true);
+        context.markErrorRecorded();
     }
 }

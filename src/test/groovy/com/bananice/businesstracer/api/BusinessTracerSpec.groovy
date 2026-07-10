@@ -4,7 +4,9 @@ import com.bananice.businesstracer.domain.model.DetailLog
 import com.bananice.businesstracer.domain.repository.DetailLogRepository
 import com.bananice.businesstracer.infrastructure.context.TraceContext
 import com.bananice.businesstracer.infrastructure.context.TraceContextHolder
+import com.bananice.businesstracer.infrastructure.context.TraceContextHolderAdapter
 import com.bananice.businesstracer.application.TraceAsyncLogService
+import com.bananice.businesstracer.application.TraceContextPort
 import org.springframework.context.ApplicationContext
 import spock.lang.Specification
 
@@ -15,6 +17,7 @@ class BusinessTracerSpec extends Specification {
 
     def setup() {
         mockContext.getBean(TraceAsyncLogService.class) >> mockService
+        mockContext.getBean(TraceContextPort.class) >> new TraceContextHolderAdapter()
         def tracer = new BusinessTracer()
         tracer.setApplicationContext(mockContext)
     }
