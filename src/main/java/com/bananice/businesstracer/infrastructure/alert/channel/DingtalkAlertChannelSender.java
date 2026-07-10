@@ -1,5 +1,6 @@
 package com.bananice.businesstracer.infrastructure.alert.channel;
 
+import com.bananice.businesstracer.application.alert.AlertChannelSender;
 import com.bananice.businesstracer.domain.model.alert.AlertChannel;
 import com.bananice.businesstracer.domain.model.alert.AlertChannelType;
 import com.bananice.businesstracer.domain.model.alert.AlertEvent;

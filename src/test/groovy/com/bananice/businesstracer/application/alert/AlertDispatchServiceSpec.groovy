@@ -8,7 +8,6 @@ import com.bananice.businesstracer.domain.model.alert.AlertStatus
 import com.bananice.businesstracer.domain.model.alert.AlertType
 import com.bananice.businesstracer.domain.repository.alert.AlertChannelRepository
 import com.bananice.businesstracer.domain.repository.alert.AlertDispatchLogRepository
-import com.bananice.businesstracer.infrastructure.alert.channel.AlertChannelSender
 import spock.lang.Specification
 import spock.lang.Subject
 

@@ -6,7 +6,6 @@ import com.bananice.businesstracer.domain.model.alert.AlertEvent;
 import com.bananice.businesstracer.domain.model.alert.AlertStatus;
 import com.bananice.businesstracer.domain.repository.alert.AlertChannelRepository;
 import com.bananice.businesstracer.domain.repository.alert.AlertDispatchLogRepository;
-import com.bananice.businesstracer.infrastructure.alert.channel.AlertChannelSender;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
