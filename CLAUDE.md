@@ -31,6 +31,8 @@ Maven Enforcer、ArchUnit 架构测试。任何一项失败都会阻断构建，
 
 分层规则由 `ArchitectureTest` 强制；存量违规冻结在 `src/test/resources/archunit-store`，
 **只拦新增违规**。消除一条存量违规后重跑测试并提交收缩后的 store。
+新增/修改冻结规则时 store 条目缺失会直接失败，需一次性带
+`-Darchunit.freeze.store.default.allowStoreCreation=true` 重新生成并提交 store。
 
 ## 约定
 

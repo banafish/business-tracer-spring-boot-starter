@@ -37,6 +37,7 @@ class ArchitectureTest {
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage(
+                    "..businesstracer.api..",
                     "..businesstracer.infrastructure..",
                     "..businesstracer.presentation..",
                     "..businesstracer.config.."));
